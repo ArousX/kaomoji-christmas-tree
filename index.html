@@ -2012,9 +2012,8 @@
     // =========================================================================
     // 圣诞树祝福贺卡系统（内置 12 张祝福卡 + 支持本地/Cloudflare Workers 全网共享写卡）
     // =========================================================================
-    // 👇 部署好 cloudflare/worker.js 后，把你的 Worker 网址填在这里即可开启全网共享：
-    // 例如：'https://kaomoji-xmas-cards.你的子域名.workers.dev'
-    const CLOUDFLARE_API_URL = 'https://kaomoji-xmas-cards.kaomoji-xmas-tree.workers.dev';
+    // 👇 已部署为 Cloudflare Pages Functions + D1（避开 *.workers.dev 国内 DNS 污染，直连稳定）：
+    const CLOUDFLARE_API_URL = 'https://kaomoji-xmas-tree.pages.dev';
 
     const CUSTOM_CARDS_KEY = 'kaomoji_xmas_custom_cards_v1';
     const OWNER_TOKEN_KEY  = 'kaomoji_xmas_owner_token_v1';
