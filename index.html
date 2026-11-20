@@ -120,30 +120,13 @@
       width: 268px;
     }
 
-    .hero-meta {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-family: var(--font-mono);
-      font-size: 12px;
-      line-height: 16px;
-      color: var(--text-3);
-      margin-bottom: 12px;
-    }
-
-    .hero-meta-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--accent);
-    }
-
     .hero-title {
       font-family: "Great Vibes", "Brush Script MT", "Segoe Script", "Snell Roundhand", "Apple Chancery", cursive;
-      font-size: clamp(38px, 4.2vw, 54px);
+      font-size: clamp(48px, 5.2vw, 70px);
       font-weight: 400;
-      line-height: 1.15;
+      line-height: 1.12;
       letter-spacing: 0.01em;
+      padding-right: 4px;
       color: var(--text-1);
       outline: none;
     }
@@ -1065,13 +1048,9 @@
 <body>
   <canvas id="treeCanvas"></canvas>
 
-  <!-- 左侧静谧排版与精简控制区（融入 React Bits BlurText / ShinyText / Magnet / StarBorder / CountUp） -->
+  <!-- 左侧静谧排版与精简控制区（融入 React Bits BlurText / ShinyText / Magnet / StarBorder） -->
   <div class="hero-overlay">
-    <div class="hero-meta rb-blur-enter" style="--rb-delay:0ms;">
-      <span class="hero-meta-dot" aria-hidden="true"></span>
-      <span>2026 Winter Postbox</span>
-    </div>
-    <div class="rb-blur-enter" style="--rb-delay:70ms;">
+    <div class="rb-blur-enter" style="--rb-delay:0ms;">
       <div class="hero-title rb-shiny" contenteditable="true" spellcheck="false">Merry Christmas</div>
     </div>
     <div class="hero-kaomoji rb-blur-enter" style="--rb-delay:140ms;" contenteditable="true" spellcheck="false"><span class="hero-script-sub">to you</span> (=^•ω•^=) ♡</div>
