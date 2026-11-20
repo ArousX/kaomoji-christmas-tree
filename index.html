@@ -112,7 +112,7 @@
     /* 左侧静谧排版与精简控制区 */
     .hero-overlay {
       position: fixed;
-      left: 40px;
+      left: clamp(56px, 6.5vw, 132px);
       top: 50%;
       transform: translateY(-50%);
       z-index: 20;
@@ -231,10 +231,14 @@
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
     }
 
-    .theme-swatch {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
+    .theme-emoji {
+      width: 16px;
+      height: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      line-height: 1;
       flex-shrink: 0;
     }
 
@@ -971,19 +975,19 @@
     <div class="hero-section-label">树影风格</div>
     <div class="theme-grid">
       <button class="theme-btn active" data-theme="0">
-        <span class="theme-swatch" style="background:#69f0ae;" aria-hidden="true"></span>
+        <span class="theme-emoji" aria-hidden="true">🎄</span>
         <span>夜色霓虹</span>
       </button>
       <button class="theme-btn" data-theme="1">
-        <span class="theme-swatch" style="background:#d97b29;" aria-hidden="true"></span>
+        <span class="theme-emoji" aria-hidden="true">📖</span>
         <span>纸本手账</span>
       </button>
       <button class="theme-btn" data-theme="2">
-        <span class="theme-swatch" style="background:#ff9ec7;" aria-hidden="true"></span>
+        <span class="theme-emoji" aria-hidden="true">🌸</span>
         <span>粉金物语</span>
       </button>
       <button class="theme-btn" data-theme="3">
-        <span class="theme-swatch" style="background:#67e8f9;" aria-hidden="true"></span>
+        <span class="theme-emoji" aria-hidden="true">❄️</span>
         <span>极光冰晶</span>
       </button>
     </div>
@@ -2220,7 +2224,7 @@
     let velPitch = 0.0;
     let camDist = 520;
     let targetDist = 520;
-    let panX = 72;
+    let panX = 104;
     let panY = 18;
 
     let autoRotate = true;
@@ -2824,7 +2828,7 @@
     document.getElementById('btnReset').addEventListener('click', () => {
       pitch = 0.08;
       targetDist = 520;
-      panX = 72;
+      panX = 104;
       panY = 18;
       velYaw = -autoSpeed;
       velPitch = 0;
