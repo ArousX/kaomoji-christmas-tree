@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Merry Christmas · 3D 颜文字圣诞树</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet" />
   <style>
     :root {
       --bg-page: #090c14;
@@ -135,10 +138,11 @@
     }
 
     .hero-title {
-      font-size: clamp(28px, 3vw, 40px);
-      font-weight: 600;
-      line-height: 1.12;
-      letter-spacing: -0.02em;
+      font-family: "Great Vibes", "Brush Script MT", "Segoe Script", "Snell Roundhand", "Apple Chancery", cursive;
+      font-size: clamp(38px, 4.4vw, 56px);
+      font-weight: 400;
+      line-height: 1.15;
+      letter-spacing: 0.01em;
       color: var(--text-1);
       outline: none;
     }
@@ -150,6 +154,14 @@
       line-height: 24px;
       color: var(--accent);
       outline: none;
+    }
+
+    .hero-script-sub {
+      font-family: "Great Vibes", "Brush Script MT", "Segoe Script", "Snell Roundhand", "Apple Chancery", cursive;
+      font-size: 24px;
+      font-weight: 400;
+      letter-spacing: 0.02em;
+      margin-right: 4px;
     }
 
     .hero-sub {
@@ -1030,7 +1042,7 @@
       <span>2026 Winter Postbox</span>
     </div>
     <div class="hero-title" contenteditable="true" spellcheck="false">Merry Christmas</div>
-    <div class="hero-kaomoji" contenteditable="true" spellcheck="false">to you (=^•ω•^=) ♡</div>
+    <div class="hero-kaomoji" contenteditable="true" spellcheck="false"><span class="hero-script-sub">to you</span> (=^•ω•^=) ♡</div>
     <div class="hero-sub">
       点击树身或信封拆开祝福，也可以写一封信挂上共享圣诞树
     </div>
@@ -1361,11 +1373,11 @@
       let cached = textSpriteCache.get(key);
       if (cached) return cached;
 
-      const baseFontPx = (styleType === 'trunk') ? 44 : ((styleType === 'formula') ? 30 : 34);
-      const pad = isPaper ? 12 : 26;
+      const baseFontPx = (styleType === 'trunk') ? 52 : ((styleType === 'formula') ? 30 : 34);
+      const pad = isPaper ? 14 : 26;
       let fontSpec;
       if (styleType === 'trunk') {
-        fontSpec = `700 ${baseFontPx}px "Comic Sans MS", "Segoe Print", "Segoe UI", cursive`;
+        fontSpec = `400 ${baseFontPx}px "Great Vibes", "Brush Script MT", "Segoe Script", "Apple Chancery", cursive`;
       } else if (styleType === 'formula') {
         fontSpec = `italic 700 ${baseFontPx}px "Cambria Math", "Times New Roman", "Georgia", serif`;
       } else {
@@ -1376,8 +1388,8 @@
       const octx = off.getContext('2d');
       octx.font = fontSpec;
       const metrics = octx.measureText(text);
-      const textW = Math.ceil(metrics.width) + 6;
-      const textH = Math.ceil(baseFontPx * 1.4);
+      const textW = Math.ceil(metrics.width) + ((styleType === 'trunk') ? 22 : 6);
+      const textH = Math.ceil(baseFontPx * 1.45);
 
       off.width = textW + pad * 2;
       off.height = textH + pad * 2;
@@ -2301,6 +2313,13 @@
     mountAllCardsOnTree();
     bindSpritesForTheme();
     syncCardsFromCloud();
+
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => {
+        textSpriteCache.clear();
+        bindSpritesForTheme();
+      });
+    }
 
     // =========================================================================
     // 鼠标拖拽 360° 自由旋转 + 惯性 + 滚轮缩放 + 右键平移 + 点击放飞烟花
