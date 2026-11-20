@@ -1,0 +1,10 @@
+name = "kaomoji-xmas-cards"
+main = "worker.js"
+compatibility_date = "2025-11-01"
+
+# 部署前请先运行一次：npx wrangler d1 create kaomoji-xmas-db
+# 然后把输出的 database_id 填到下方：
+[[d1_databases]]
+binding = "DB"
+database_name = "kaomoji-xmas-db"
+database_id = "d3897491-7da0-4f50-acdc-7b823e7e331d"

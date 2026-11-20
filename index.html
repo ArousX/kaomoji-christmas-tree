@@ -1,0 +1,3292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Merry Christmas · 3D 颜文字圣诞树</title>
+  <style>
+    :root {
+      --bg-page: #090c14;
+      --surface-panel: rgba(14, 18, 28, 0.88);
+      --surface-raised: rgba(24, 30, 44, 0.84);
+      --surface-hover: rgba(34, 42, 60, 0.92);
+      --surface-active: #262f44;
+      --border-hairline: rgba(238, 240, 245, 0.09);
+      --border-strong: rgba(238, 240, 245, 0.20);
+      --text-1: #eef0f5;
+      --text-2: #a3a9b8;
+      --text-3: #7a8296;
+      --accent: #e5b96b;
+      --accent-hover: #ecc681;
+      --accent-text: #12151f;
+      --danger: #e5646d;
+      --env-back: #131826;
+      --env-flap: #182032;
+      --env-side: #111624;
+      --env-bottom: #161d2e;
+      --env-letter: #1a2133;
+      --seal-bg: #e5b96b;
+      --seal-text: #18130a;
+      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+      --font-sans: "Inter", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    body.paper-mode {
+      --bg-page: #f6f1e7;
+      --surface-panel: rgba(251, 248, 241, 0.94);
+      --surface-raised: rgba(239, 233, 223, 0.88);
+      --surface-hover: rgba(230, 222, 209, 0.96);
+      --surface-active: #e4dac7;
+      --border-hairline: rgba(31, 27, 22, 0.09);
+      --border-strong: rgba(31, 27, 22, 0.20);
+      --text-1: #1f1b16;
+      --text-2: #5e554a;
+      --text-3: #7b7266;
+      --accent: #255c41;
+      --accent-hover: #2d6d4d;
+      --accent-text: #fdfbf7;
+      --danger: #b83a44;
+      --env-back: #e9dec8;
+      --env-flap: #efe5d2;
+      --env-side: #e3d6be;
+      --env-bottom: #ece1cb;
+      --env-letter: #fffdf8;
+      --seal-bg: #b83a44;
+      --seal-text: #fff7f3;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: var(--font-sans);
+      background: var(--bg-page);
+      color: var(--text-1);
+      transition: background-color 0.36s var(--ease-out), color 0.36s var(--ease-out);
+    }
+
+    #treeCanvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      cursor: grab;
+    }
+
+    #treeCanvas:active {
+      cursor: grabbing;
+    }
+
+    /* 统一 16px 1.5px 描边图标规范 */
+    .ui-icon {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    textarea:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    /* 左侧静谧排版标题区 */
+    .hero-overlay {
+      position: fixed;
+      left: 36px;
+      top: 32vh;
+      z-index: 10;
+      pointer-events: auto;
+      max-width: 268px;
+    }
+
+    .hero-meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-3);
+      margin-bottom: 12px;
+    }
+
+    .hero-meta-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    .hero-title {
+      font-size: clamp(28px, 3vw, 40px);
+      font-weight: 600;
+      line-height: 1.12;
+      letter-spacing: -0.02em;
+      color: var(--text-1);
+      outline: none;
+    }
+
+    .hero-kaomoji {
+      margin-top: 8px;
+      font-size: 16px;
+      font-weight: 500;
+      line-height: 24px;
+      color: var(--accent);
+      outline: none;
+    }
+
+    .hero-sub {
+      margin-top: 16px;
+      font-size: 13px;
+      line-height: 20px;
+      color: var(--text-2);
+    }
+
+    .hero-keys {
+      margin-top: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-3);
+    }
+
+    .keycap {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: var(--surface-raised);
+      border: 1px solid var(--border-hairline);
+      font-size: 12px;
+      color: var(--text-2);
+    }
+
+    /* 右上角克制工具面板 (4px 网格 + 嵌套圆角 16px -> 8px) */
+    .control-panel {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      z-index: 20;
+      width: 280px;
+      padding: 16px;
+      border-radius: 16px;
+      background-color: var(--surface-panel);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border-hairline);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+      transition: background-color 0.24s var(--ease-out), border-color 0.24s var(--ease-out);
+    }
+
+    body.paper-mode .control-panel {
+      background-color: rgba(251, 248, 241, 0.96);
+      border-color: rgba(31, 27, 22, 0.14);
+      box-shadow: 0 8px 24px rgba(31, 27, 22, 0.09);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 20px;
+      color: var(--text-1);
+    }
+
+    .panel-title-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-title-group .ui-icon {
+      color: var(--text-2);
+    }
+
+    .fps-badge {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-3);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .theme-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .theme-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 36px;
+      padding: 0 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-hairline);
+      background-color: var(--surface-raised);
+      color: var(--text-2);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.16s var(--ease-out), border-color 0.16s var(--ease-out), color 0.16s var(--ease-out), transform 0.12s var(--ease-out);
+      text-align: left;
+    }
+
+    .theme-btn:hover {
+      background-color: var(--surface-hover);
+      color: var(--text-1);
+    }
+
+    .theme-btn:active {
+      transform: scale(0.98);
+    }
+
+    .theme-btn.active {
+      background-color: var(--surface-active);
+      border-color: var(--border-strong);
+      color: var(--text-1);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    body.paper-mode .theme-btn {
+      background-color: #efe9df;
+      color: #4a4239;
+    }
+
+    body.paper-mode .theme-btn.active {
+      background-color: #e2d7c4;
+      color: #1f1b16;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    }
+
+    .theme-swatch {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px 0;
+      border-top: 1px solid var(--border-hairline);
+      border-bottom: 1px solid var(--border-hairline);
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 28px;
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-2);
+    }
+
+    .control-row input[type="range"] {
+      width: 132px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .action-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .action-btn {
+      flex: 1;
+      height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 0 8px;
+      border-radius: 8px;
+      border: 1px solid var(--border-hairline);
+      background-color: var(--surface-raised);
+      color: var(--text-2);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.16s var(--ease-out), border-color 0.16s var(--ease-out), color 0.16s var(--ease-out), transform 0.12s var(--ease-out);
+      white-space: nowrap;
+    }
+
+    .action-btn:hover {
+      background-color: var(--surface-hover);
+      color: var(--text-1);
+    }
+
+    .action-btn:active {
+      transform: scale(0.98);
+    }
+
+    .action-btn.active {
+      background-color: var(--surface-active);
+      border-color: var(--border-strong);
+      color: var(--text-1);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    body.paper-mode .action-btn {
+      background-color: #efe9df;
+      color: #4a4239;
+    }
+
+    body.paper-mode .action-btn.active {
+      background-color: #e2d7c4;
+      color: #1f1b16;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    }
+
+    /* 主按钮：高对比实体强调色 + 克制微距 */
+    .write-card-btn {
+      width: 100%;
+      height: 40px;
+      margin-top: 12px;
+      padding: 0 16px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      background: var(--accent);
+      color: var(--accent-text);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background-color 0.16s var(--ease-out), transform 0.12s var(--ease-out);
+    }
+
+    .write-card-btn:hover {
+      background: var(--accent-hover);
+    }
+
+    .write-card-btn:active {
+      transform: scale(0.98);
+    }
+
+    .card-count-mono {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      opacity: 0.78;
+    }
+
+    .cloud-sync-status {
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-3);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* 贺卡弹窗遮罩层 */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      background: rgba(5, 7, 13, 0.64);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      opacity: 0;
+      pointer-events: none;
+      visibility: hidden;
+      transition: opacity 0.24s var(--ease-out), visibility 0.24s step-end;
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+      visibility: visible;
+      transition: opacity 0.24s var(--ease-out), visibility 0s step-start;
+    }
+
+    .modal-backdrop.closing {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s var(--ease-out), visibility 0.18s step-end;
+    }
+
+    body.paper-mode .modal-backdrop {
+      background: rgba(31, 27, 22, 0.34);
+    }
+
+    /* =========================================================================
+       3D 立体信封祝福卡片（信纸质感 + 精细折痕 + 克制实体阴影）
+       ========================================================================= */
+    .envelope-stage {
+      perspective: 1200px;
+      width: min(440px, 92vw);
+      position: relative;
+    }
+
+    .envelope-shell {
+      position: relative;
+      width: 100%;
+      padding-top: 84px;
+      padding-bottom: 128px;
+      transform-style: preserve-3d;
+      --origin-x: 0px;
+      --origin-y: 24px;
+      --origin-rot: -3deg;
+      opacity: 0;
+      filter: blur(4px);
+      transform: translate3d(var(--origin-x), var(--origin-y), 0) scale(0.55) rotate(var(--origin-rot));
+      will-change: transform, opacity, filter;
+    }
+
+    .envelope-shell.is-entering {
+      opacity: 1;
+      filter: blur(0px);
+      transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+      transition:
+        transform 0.40s var(--ease-out),
+        opacity 0.24s var(--ease-out),
+        filter 0.30s var(--ease-out);
+    }
+
+    .modal-backdrop.closing .envelope-shell {
+      opacity: 0;
+      filter: blur(4px);
+      transform: translate3d(0, 12px, 0) scale(0.96);
+      transition:
+        transform 0.18s var(--ease-out),
+        opacity 0.16s var(--ease-out),
+        filter 0.16s var(--ease-out);
+    }
+
+    /* 1. 信封背板 */
+    .env-back {
+      position: absolute;
+      top: 96px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border-radius: 12px 12px 16px 16px;
+      background: var(--env-back);
+      border: 1px solid var(--border-strong);
+      box-shadow: 0 24px 56px rgba(0, 0, 0, 0.45);
+      z-index: 1;
+    }
+
+    body.paper-mode .env-back {
+      box-shadow: 0 16px 40px rgba(31, 27, 22, 0.16);
+    }
+
+    /* 2. 信封顶部 3D 翻盖 */
+    .env-flap-wrap {
+      position: absolute;
+      top: 96px;
+      left: 0;
+      right: 0;
+      height: 148px;
+      transform-origin: top center;
+      transform-style: preserve-3d;
+      transform: rotateX(0deg);
+      z-index: 6;
+      pointer-events: none;
+      transition:
+        transform 0.44s var(--ease-out),
+        z-index 0s linear 0.16s;
+    }
+
+    .envelope-shell.is-opened .env-flap-wrap {
+      transform: rotateX(-172deg);
+      z-index: 2;
+      transition:
+        transform 0.44s var(--ease-out),
+        z-index 0s linear 0.14s;
+    }
+
+    .env-flap-svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      overflow: visible;
+    }
+
+    .env-flap-fill {
+      fill: var(--env-flap);
+      stroke: var(--border-strong);
+      stroke-width: 1.25;
+    }
+
+    .env-wax-seal {
+      position: absolute;
+      left: 50%;
+      top: 112px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      transform: translate(-50%, -50%) scale(1);
+      background: var(--seal-bg);
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--seal-text);
+      font-size: 16px;
+      font-weight: 600;
+      opacity: 1;
+      transition:
+        transform 0.22s var(--ease-out),
+        opacity 0.18s var(--ease-out);
+    }
+
+    .envelope-shell.is-opened .env-wax-seal {
+      transform: translate(-50%, -50%) scale(0.75);
+      opacity: 0;
+    }
+
+    /* 3. 信纸内页 */
+    .env-letter {
+      position: relative;
+      z-index: 3;
+      width: calc(100% - 32px);
+      margin: 0 auto;
+      padding: 24px;
+      border-radius: 12px;
+      background: var(--env-letter);
+      border: 1px solid var(--border-strong);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.30);
+      color: var(--text-1);
+      opacity: 0;
+      filter: blur(4px);
+      transform: translate3d(0, 72px, 0) scale(0.94);
+      will-change: transform, opacity, filter;
+      transition:
+        transform 0.44s var(--ease-out) 0.12s,
+        opacity 0.28s var(--ease-out) 0.12s,
+        filter 0.30s var(--ease-out) 0.12s;
+    }
+
+    .envelope-shell.is-opened .env-letter {
+      opacity: 1;
+      filter: blur(0px);
+      transform: translate3d(0, -12px, 12px) scale(1);
+    }
+
+    .envelope-shell.is-swapping .env-letter {
+      opacity: 0;
+      filter: blur(4px);
+      transform: translate3d(0, 52px, 0) scale(0.94);
+      transition:
+        transform 0.16s var(--ease-out),
+        opacity 0.14s var(--ease-out),
+        filter 0.14s var(--ease-out);
+    }
+
+    body.paper-mode .env-letter {
+      box-shadow: 0 8px 24px rgba(31, 27, 22, 0.12);
+    }
+
+    .env-letter::before {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border-radius: 8px;
+      border: 1px dashed var(--border-hairline);
+      pointer-events: none;
+    }
+
+    .letter-reveal {
+      opacity: 0;
+      filter: blur(3px);
+      transform: translate3d(0, 8px, 0);
+      transition:
+        transform 0.30s var(--ease-out),
+        opacity 0.26s var(--ease-out),
+        filter 0.28s var(--ease-out);
+    }
+
+    .envelope-shell.is-opened .letter-reveal {
+      opacity: 1;
+      filter: blur(0px);
+      transform: translate3d(0, 0, 0);
+    }
+
+    .envelope-shell.is-opened .lr-1 { transition-delay: 0.22s; }
+    .envelope-shell.is-opened .lr-2 { transition-delay: 0.26s; }
+    .envelope-shell.is-opened .lr-3 { transition-delay: 0.30s; }
+    .envelope-shell.is-opened .lr-4 { transition-delay: 0.34s; }
+
+    .envelope-shell.is-swapping .letter-reveal {
+      opacity: 0;
+      transform: translate3d(0, 6px, 0);
+      transition-delay: 0s;
+      transition-duration: 0.12s;
+    }
+
+    /* 4. 信封前袋 */
+    .env-pocket-front {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 152px;
+      z-index: 4;
+      border-radius: 0 0 16px 16px;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .env-pocket-svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .env-pocket-side {
+      fill: var(--env-side);
+      stroke: var(--border-hairline);
+      stroke-width: 1.2;
+    }
+
+    .env-pocket-bottom {
+      fill: var(--env-bottom);
+      stroke: var(--border-strong);
+      stroke-width: 1.2;
+    }
+
+    .env-front-actions {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: 16px;
+      z-index: 5;
+      display: flex;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    /* 手写信封表单弹窗容器 */
+    .gift-card-box {
+      position: relative;
+      width: min(432px, 92vw);
+      padding: 24px;
+      border-radius: 16px;
+      background: var(--env-letter);
+      border: 1px solid var(--border-strong);
+      box-shadow: 0 24px 56px rgba(0, 0, 0, 0.48);
+      color: var(--text-1);
+      opacity: 0;
+      filter: blur(4px);
+      transform: translate3d(0, 16px, 0) scale(0.95);
+      transition:
+        transform 0.34s var(--ease-out),
+        opacity 0.24s var(--ease-out),
+        filter 0.26s var(--ease-out);
+    }
+
+    .modal-backdrop.open .gift-card-box {
+      opacity: 1;
+      filter: blur(0px);
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+
+    .modal-backdrop.closing .gift-card-box {
+      opacity: 0;
+      filter: blur(4px);
+      transform: translate3d(0, 8px, 0) scale(0.97);
+      transition-duration: 0.18s;
+    }
+
+    body.paper-mode .gift-card-box {
+      box-shadow: 0 16px 40px rgba(31, 27, 22, 0.14);
+    }
+
+    .gift-card-box::before {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border-radius: 10px;
+      border: 1px dashed var(--border-hairline);
+      pointer-events: none;
+    }
+
+    .modal-close-btn {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 8;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: 1px solid var(--border-hairline);
+      background: var(--surface-raised);
+      color: var(--text-2);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.16s var(--ease-out), color 0.16s var(--ease-out), transform 0.12s var(--ease-out);
+    }
+
+    .modal-close-btn:hover {
+      background: var(--surface-hover);
+      color: var(--text-1);
+    }
+
+    .modal-close-btn:active {
+      transform: scale(0.96);
+    }
+
+    .card-tag-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-3);
+      margin-bottom: 12px;
+      padding-right: 36px;
+    }
+
+    .card-tag-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: var(--surface-raised);
+      border: 1px solid var(--border-hairline);
+      color: var(--text-2);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .card-kaomoji-big {
+      text-align: center;
+      font-size: 24px;
+      font-weight: 500;
+      line-height: 32px;
+      color: var(--accent);
+      margin: 8px 0 8px;
+    }
+
+    .card-title-text {
+      text-align: center;
+      font-size: 18px;
+      font-weight: 600;
+      line-height: 24px;
+      color: var(--text-1);
+      margin-bottom: 12px;
+    }
+
+    .card-message-body {
+      font-size: 14px;
+      line-height: 22px;
+      text-align: center;
+      padding: 16px;
+      border-radius: 8px;
+      background: var(--surface-raised);
+      border: 1px solid var(--border-hairline);
+      color: var(--text-1);
+      white-space: pre-wrap;
+      word-break: break-word;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    .card-signature {
+      margin-top: 12px;
+      text-align: right;
+      font-size: 13px;
+      line-height: 20px;
+      color: var(--text-2);
+    }
+
+    .card-modal-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .card-btn {
+      flex: 1;
+      height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 0 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-hairline);
+      background: var(--surface-raised);
+      color: var(--text-1);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.16s var(--ease-out), border-color 0.16s var(--ease-out), transform 0.12s var(--ease-out);
+    }
+
+    .card-btn:hover {
+      background: var(--surface-hover);
+      border-color: var(--border-strong);
+    }
+
+    .card-btn:active {
+      transform: scale(0.98);
+    }
+
+    .card-btn.primary {
+      border-color: transparent;
+      background: var(--accent);
+      color: var(--accent-text);
+    }
+
+    .card-btn.primary:hover {
+      background: var(--accent-hover);
+    }
+
+    .card-btn.danger {
+      flex: 0 0 auto;
+      padding: 0 12px;
+      color: var(--danger);
+    }
+
+    /* 无障碍减弱动效支持 */
+    @media (prefers-reduced-motion: reduce) {
+      .modal-backdrop,
+      .envelope-shell,
+      .env-flap-wrap,
+      .env-wax-seal,
+      .env-letter,
+      .letter-reveal,
+      .gift-card-box,
+      .card-btn,
+      .toast-msg {
+        transition-duration: 0.01ms !important;
+        transition-delay: 0s !important;
+        animation-duration: 0.01ms !important;
+      }
+    }
+
+    /* 写贺卡表单样式 */
+    .form-group {
+      margin-top: 12px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      line-height: 16px;
+      margin-bottom: 6px;
+      color: var(--text-2);
+    }
+
+    .form-input, .form-textarea {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-hairline);
+      background: var(--surface-raised);
+      color: var(--text-1);
+      font-family: inherit;
+      font-size: 13px;
+      line-height: 20px;
+      outline: none;
+      user-select: text;
+      -webkit-user-select: text;
+      transition: border-color 0.16s var(--ease-out);
+    }
+
+    .form-input:focus, .form-textarea:focus {
+      border-color: var(--accent);
+    }
+
+    .form-textarea {
+      min-height: 88px;
+      resize: vertical;
+    }
+
+    .picker-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .picker-chip {
+      height: 32px;
+      padding: 0 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border-hairline);
+      background: var(--surface-raised);
+      color: var(--text-2);
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background-color 0.16s var(--ease-out), border-color 0.16s var(--ease-out), color 0.16s var(--ease-out);
+    }
+
+    .picker-chip:hover {
+      background: var(--surface-hover);
+      color: var(--text-1);
+    }
+
+    .picker-chip.active {
+      border-color: var(--border-strong);
+      background: var(--surface-active);
+      color: var(--text-1);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    /* 轻提示 Toast */
+    .toast-msg {
+      position: fixed;
+      left: 50%;
+      bottom: 32px;
+      transform: translateX(-50%) translateY(12px);
+      z-index: 80;
+      padding: 8px 16px;
+      border-radius: 8px;
+      background: var(--surface-panel);
+      border: 1px solid var(--border-strong);
+      color: var(--text-1);
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s var(--ease-out), transform 0.2s var(--ease-out);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32);
+    }
+
+    .toast-msg.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    @media (max-width: 768px) {
+      .hero-overlay {
+        left: 20px;
+        top: 20px;
+        max-width: 240px;
+      }
+      .hero-keys {
+        display: none;
+      }
+      .control-panel {
+        top: auto;
+        bottom: 16px;
+        right: 16px;
+        left: 16px;
+        width: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="treeCanvas"></canvas>
+
+  <!-- 左侧静谧排版标题区 -->
+  <div class="hero-overlay">
+    <div class="hero-meta">
+      <span class="hero-meta-dot" aria-hidden="true"></span>
+      <span>2026 Winter Postbox</span>
+    </div>
+    <div class="hero-title" contenteditable="true" spellcheck="false">Merry Christmas</div>
+    <div class="hero-kaomoji" contenteditable="true" spellcheck="false">to you (=^•ω•^=) ♡</div>
+    <div class="hero-sub">
+      点击树身或信封拆开祝福，也可以写一封信挂上共享圣诞树
+    </div>
+    <div class="hero-keys">
+      <span class="keycap">左键拖拽 旋转</span>
+      <span class="keycap">滚轮 缩放</span>
+      <span class="keycap">右键 平移</span>
+    </div>
+  </div>
+
+  <!-- 右上角控制面板 -->
+  <div class="control-panel">
+    <div class="panel-header">
+      <span class="panel-title-group">
+        <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2L6.5 10h3.5L5 17h14l-5-7h3.5L12 2z"/><path d="M12 17v5"/></svg>
+        <span>颜文字圣诞树</span>
+      </span>
+      <span class="fps-badge" id="fpsText">60 FPS</span>
+    </div>
+
+    <div class="theme-grid">
+      <button class="theme-btn active" data-theme="0">
+        <span class="theme-swatch" style="background:#69f0ae;" aria-hidden="true"></span>
+        <span>夜色霓虹</span>
+      </button>
+      <button class="theme-btn" data-theme="1">
+        <span class="theme-swatch" style="background:#d97b29;" aria-hidden="true"></span>
+        <span>纸本手账</span>
+      </button>
+      <button class="theme-btn" data-theme="2">
+        <span class="theme-swatch" style="background:#ff9ec7;" aria-hidden="true"></span>
+        <span>粉金物语</span>
+      </button>
+      <button class="theme-btn" data-theme="3">
+        <span class="theme-swatch" style="background:#67e8f9;" aria-hidden="true"></span>
+        <span>极光冰晶</span>
+      </button>
+    </div>
+
+    <div class="control-group">
+      <div class="control-row">
+        <span>表情大小</span>
+        <input type="range" id="sizeSlider" min="0.7" max="1.5" step="0.05" value="1.05" />
+      </div>
+
+      <div class="control-row">
+        <span>自转速度</span>
+        <input type="range" id="speedSlider" min="0" max="1.4" step="0.05" value="0.35" />
+      </div>
+
+      <div class="control-row">
+        <span>粒子亮度</span>
+        <input type="range" id="glowSlider" min="0.4" max="1.8" step="0.05" value="1.15" />
+      </div>
+    </div>
+
+    <div class="action-row">
+      <button class="action-btn active" id="btnAutoRotate">
+        <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
+        <span>自转</span>
+      </button>
+      <button class="action-btn" id="btnMusic">
+        <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        <span>八音盒</span>
+      </button>
+      <button class="action-btn" id="btnReset">
+        <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/></svg>
+        <span>复位</span>
+      </button>
+    </div>
+
+    <button class="write-card-btn" id="btnWriteCard">
+      <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3 7 12 13 21 7"/></svg>
+      <span>写一张贺卡挂上树</span>
+      <span class="card-count-mono" id="cardCountBadge">12</span>
+    </button>
+    <div class="cloud-sync-status" id="cloudSyncStatus">
+      <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+      <span id="cloudSyncText">正在连接共享信箱</span>
+    </div>
+  </div>
+
+  <!-- 3D 立体信封拆封祝福贺卡弹窗 -->
+  <div class="modal-backdrop" id="cardModalBackdrop">
+    <div class="envelope-stage">
+      <div class="envelope-shell" id="envelopeShell">
+        <!-- 1. 信封背板 -->
+        <div class="env-back"></div>
+
+        <!-- 2. 信封顶部 3D 翻盖 + 火漆印章 -->
+        <div class="env-flap-wrap">
+          <svg class="env-flap-svg" viewBox="0 0 440 150" preserveAspectRatio="none" aria-hidden="true">
+            <path class="env-flap-fill" d="M 2,2 Q 2,0 14,0 L 426,0 Q 438,0 438,2 L 228,128 Q 220,133 212,128 Z" />
+          </svg>
+          <div class="env-wax-seal" id="envWaxSeal">★</div>
+        </div>
+
+        <!-- 3. 从信封内抽出的祝福信纸卡片 -->
+        <div class="env-letter">
+          <button class="modal-close-btn" id="btnCloseCardModal" title="关闭" aria-label="关闭">
+            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+          <div class="card-tag-row letter-reveal lr-1">
+            <span class="card-tag-pill" id="cardTagPill">No.01 · 树上挂卡</span>
+            <span id="cardStyleLabel">礼物祝福卡</span>
+          </div>
+          <div class="card-kaomoji-big letter-reveal lr-1" id="cardKaomojiDisplay">(=^•ω•^=) ♡</div>
+          <div class="card-title-text letter-reveal lr-2" id="cardTitleDisplay">冬日好运签</div>
+          <div class="card-message-body letter-reveal lr-3" id="cardBodyDisplay"></div>
+          <div class="card-signature letter-reveal lr-4" id="cardSignDisplay">—— 圣诞小精灵</div>
+        </div>
+
+        <!-- 4. 信封前袋（V 形左右折页与底袋） -->
+        <div class="env-pocket-front">
+          <svg class="env-pocket-svg" viewBox="0 0 440 152" preserveAspectRatio="none" aria-hidden="true">
+            <polygon class="env-pocket-side" points="0,0 220,86 0,152" />
+            <polygon class="env-pocket-side" points="440,0 220,86 440,152" />
+            <path class="env-pocket-bottom" d="M 0,152 L 198,66 Q 220,56 242,66 L 440,152 Z" />
+          </svg>
+        </div>
+
+        <!-- 5. 信封正面底部交互按钮 -->
+        <div class="env-front-actions">
+          <button class="card-btn" id="btnRandomAnother">
+            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+            <span>再抽一张</span>
+          </button>
+          <button class="card-btn primary" id="btnOpenComposeFromCard">
+            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            <span>写一张</span>
+          </button>
+          <button class="card-btn danger" id="btnDeleteCard" style="display:none;">摘下</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 自己写一张贺卡挂上树弹窗 -->
+  <div class="modal-backdrop" id="composeModalBackdrop">
+    <div class="gift-card-box">
+      <button class="modal-close-btn" id="btnCloseComposeModal" title="关闭" aria-label="关闭">
+        <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+      <div class="card-tag-row">
+        <span class="card-tag-pill">新贺卡 · 挂上共享圣诞树</span>
+      </div>
+      <div class="card-title-text" style="margin-bottom:8px;">写一张祝福卡片</div>
+
+      <div class="form-group">
+        <label class="form-label">颜文字印章</label>
+        <div class="picker-row" id="kaomojiPicker">
+          <button type="button" class="picker-chip active" data-val="(=^•ω•^=) ♡">(=^•ω•^=) ♡</button>
+          <button type="button" class="picker-chip" data-val="(≧▽≦) ★">(≧▽≦) ★</button>
+          <button type="button" class="picker-chip" data-val="(〃•ᴗ•〃) ❄">(〃•ᴗ•〃) ❄</button>
+          <button type="button" class="picker-chip" data-val="(｡•̀ᴗ-)✧">(｡•̀ᴗ-)✧</button>
+          <button type="button" class="picker-chip" data-val="(UωU) ✦">(UωU) ✦</button>
+          <button type="button" class="picker-chip" data-val="ฅ•ω•ฅ ♡">ฅ•ω•ฅ ♡</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">挂卡信封样式</label>
+        <div class="picker-row" id="cardStylePicker">
+          <button type="button" class="picker-chip active" data-style="gift">礼物卡</button>
+          <button type="button" class="picker-chip" data-style="heart">爱心卡</button>
+          <button type="button" class="picker-chip" data-style="star">星芒卡</button>
+          <button type="button" class="picker-chip" data-style="snow">雪花卡</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="inputCardTitle">标题（选填）</label>
+        <input class="form-input" id="inputCardTitle" maxlength="24" placeholder="致新的一年" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="inputCardMsg">祝福语</label>
+        <textarea class="form-textarea" id="inputCardMsg" maxlength="200" placeholder="写下想挂在圣诞树上的祝福"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="inputCardSign">署名（选填）</label>
+        <input class="form-input" id="inputCardSign" maxlength="20" placeholder="路过的圣诞老人" />
+      </div>
+
+      <div class="card-modal-actions">
+        <button class="card-btn" id="btnCancelCompose">取消</button>
+        <button class="card-btn primary" id="btnSubmitCard">挂到树上</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部轻提示 -->
+  <div class="toast-msg" id="toastMsg">已挂上圣诞树</div>
+
+  <script>
+    // =========================================================================
+    // 3D 多彩颜文字圣诞树（全离屏贴图缓存加速版：0 shadowBlur 实时开销，稳跑高刷满帧！）
+    // =========================================================================
+    const canvas = document.getElementById('treeCanvas');
+    const ctx = canvas.getContext('2d', { alpha: false });
+
+    const KAOMOJI_PAIRS = [
+      ['O v O',       '- v -'],
+      ['^ω^',         '>ω<'],
+      ['•u<',         '•ᴗ•'],
+      ['(UωU)',       '(^ω^)'],
+      ['(≧v≦)',       '(≧▽≦)'],
+      ['๑•ᴗ<๑',       '๑•ᴗ•๑'],
+      ['≧0≦',         '≧∇≦'],
+      ['◍>v<◍',       '◍•ᴗ•◍'],
+      ['(•̀ᴗ•́)',      '(>ᴗ<)'],
+      ['(〃•ᴗ•〃)',   '(〃>▽<〃)'],
+      ['(๑•ᴗ•๑)',     '(๑>؂<๑)'],
+      ['>v°',         '•v•'],
+      ['〃>ᗜ<〃',     '〃^ᗜ^〃'],
+      ['┏•▾•┓',       '┏>▾<┓'],
+      ['>v0',         '^v^'],
+      ['≡ε๑',         '≡ω๑'],
+      ['(=^•ω•^=)',   '(=^>ω<^=)'],
+      ['(^>ω<^)',     '(^•ω•^)'],
+      ['(≡>u0≡)',     '(≡^u^≡)'],
+      ['(｡•̀ᴗ-)✧',    '(｡•̀ᴗ•́)✧'],
+      ['(◍•ᴗ•◍)',     '(◍>ᴗ<◍)'],
+      ['ฅ•ω•ฅ',       'ฅ>ω<ฅ']
+    ];
+
+    // 4 种风格专属简约手绘风点击特效素材库（与颜文字同款极简线条质感，零杂乱彩绘 emoji）
+    const THEME_BURSTS = [
+      // 0: 🎄 霓虹多彩圣诞 -> 极简手绘线条圣诞图标（礼物盒、铃铛、圣诞帽、拐杖糖、小树、星芒）
+      {
+        mode: 'xmas',
+        shapes: ['gift', 'bell', 'hat', 'candy', 'miniTree', 'star', 'spark']
+      },
+      // 1: 📖 手账纸本手绘 -> 简约手写数理化公式（含原图英语课本彩蛋：青蒿素 C₁₅H₂₂O₅）
+      {
+        mode: 'formula',
+        items: [
+          'E = mc²', 'e^(iπ)+1 = 0', 'F = ma', 'PV = nRT',
+          'a² + b² = c²', '∫ f(x)dx', 'sin²θ + cos²θ = 1', 'ΔG = ΔH - TΔS',
+          'H₂O', 'C₁₅H₂₂O₅', 'λ = h/p', 'iℏ∂ψ/∂t = Ĥψ',
+          '∇·E = ρ/ε₀', 'CO₂', 'lim x→∞', 'v = v₀ + at'
+        ]
+      },
+      // 2: 🌸 甜心粉金物语 -> 极简线条/实心/双层/闪耀爱心（纯线条手绘风）
+      {
+        mode: 'heart',
+        shapes: ['heartOutline', 'heartSolid', 'heartDouble', 'heartSpark']
+      },
+      // 3: 🌌 极光冰晶幻梦 -> 极简六角几何线条雪花与星晶
+      {
+        mode: 'snow',
+        shapes: ['snowClassic', 'snowHex', 'snowNeedle', 'spark']
+      }
+    ];
+
+    const THEMES = [
+      {
+        name: 'neon-xmas',
+        paper: false,
+        bgTop: '#081022',
+        bgMid: '#050814',
+        bgBot: '#020308',
+        starColor: '#ffe07d',
+        starGlow: '#ffae34',
+        trunkColor: '#ffe7b3',
+        palette: ['#69f0ae', '#ffd56b', '#ff6b8b', '#7be3ff', '#ff9ec7', '#b894ff', '#9dff87'],
+        ribbonColor: '#ffd97d',
+        groundPalette: ['#7be3ff', '#ffd56b', '#ff9ec7', '#9dff87'],
+        snowColor: '#e8f4ff'
+      },
+      {
+        name: 'notebook-paper',
+        paper: true,
+        bgTop: '#f8f4ea',
+        bgMid: '#f3ede0',
+        bgBot: '#ebe3d3',
+        starColor: '#262320',
+        starGlow: '#e8a838',
+        trunkColor: '#22201e',
+        palette: ['#262320', '#236b48', '#c83e4d', '#2b2825', '#d68910', '#3d5a80', '#2b7a52'],
+        ribbonColor: '#d97b29',
+        groundPalette: ['#524b44', '#2e7550', '#c9505e', '#c98a2c'],
+        snowColor: '#8d8478'
+      },
+      {
+        name: 'sakura-gold',
+        paper: false,
+        bgTop: '#1c0c1b',
+        bgMid: '#100712',
+        bgBot: '#060308',
+        starColor: '#fff2c2',
+        starGlow: '#ff96c2',
+        trunkColor: '#ffd4e5',
+        palette: ['#ff9ec7', '#ffd6e8', '#ffe08a', '#ff75a0', '#ffb8d4', '#fff0f6', '#e2b0ff'],
+        ribbonColor: '#ffe394',
+        groundPalette: ['#ff9ec7', '#ffe08a', '#e2b0ff', '#fff0f6'],
+        snowColor: '#ffeef6'
+      },
+      {
+        name: 'aurora-ice',
+        paper: false,
+        bgTop: '#061529',
+        bgMid: '#040b18',
+        bgBot: '#02040a',
+        starColor: '#e8fbff',
+        starGlow: '#5ce1ff',
+        trunkColor: '#c2f0ff',
+        palette: ['#67e8f9', '#818cf8', '#c084fc', '#5eead4', '#93c5fd', '#f0abfc', '#e0f2fe'],
+        ribbonColor: '#a5f3fc',
+        groundPalette: ['#67e8f9', '#c084fc', '#5eead4', '#93c5fd'],
+        snowColor: '#e6f7ff'
+      }
+    ];
+
+    let currentThemeIdx = 0;
+
+    // =========================================================================
+    // 高性能离屏贴图缓存器（将阴影光晕、文字、粒子、背景一次性预烘焙为 GPU 纹理）
+    // =========================================================================
+    const textSpriteCache = new Map();
+    const dotSpriteCache = new Map();
+    const bgCanvas = document.createElement('canvas');
+    const bgCtx = bgCanvas.getContext('2d');
+
+    function getTextSprite(text, color, isPaper, styleType = 'normal') {
+      const key = `${text}|${color}|${isPaper ? 1 : 0}|${styleType}`;
+      let cached = textSpriteCache.get(key);
+      if (cached) return cached;
+
+      const baseFontPx = (styleType === 'trunk') ? 44 : ((styleType === 'formula') ? 30 : 34);
+      const pad = isPaper ? 12 : 26;
+      let fontSpec;
+      if (styleType === 'trunk') {
+        fontSpec = `700 ${baseFontPx}px "Comic Sans MS", "Segoe Print", "Segoe UI", cursive`;
+      } else if (styleType === 'formula') {
+        fontSpec = `italic 700 ${baseFontPx}px "Cambria Math", "Times New Roman", "Georgia", serif`;
+      } else {
+        fontSpec = `700 ${baseFontPx}px "Segoe UI Symbol", "Microsoft YaHei", "Yu Gothic UI", sans-serif`;
+      }
+
+      const off = document.createElement('canvas');
+      const octx = off.getContext('2d');
+      octx.font = fontSpec;
+      const metrics = octx.measureText(text);
+      const textW = Math.ceil(metrics.width) + 6;
+      const textH = Math.ceil(baseFontPx * 1.4);
+
+      off.width = textW + pad * 2;
+      off.height = textH + pad * 2;
+
+      octx.font = fontSpec;
+      octx.textAlign = 'center';
+      octx.textBaseline = 'middle';
+      octx.fillStyle = color;
+
+      if (!isPaper) {
+        // 仅在首次建缓存时烘焙一次柔和霓虹发光，主循环零开销！
+        octx.shadowColor = color;
+        octx.shadowBlur = (styleType === 'trunk') ? 18 : 14;
+        octx.fillText(text, off.width * 0.5, off.height * 0.5);
+        octx.shadowBlur = 4;
+        octx.fillText(text, off.width * 0.5, off.height * 0.5);
+      } else {
+        octx.fillText(text, off.width * 0.5, off.height * 0.5);
+      }
+
+      cached = {
+        canvas: off,
+        w: off.width,
+        h: off.height,
+        baseFontPx
+      };
+      textSpriteCache.set(key, cached);
+      return cached;
+    }
+
+    // 极简手绘线条矢量贴图缓存器（与颜文字线条粗细、圆角笔触和霓虹发光完全统一）
+    const vectorSpriteCache = new Map();
+
+    function drawMinimalHeartPath(c, s) {
+      c.beginPath();
+      c.moveTo(0, s * 0.34);
+      c.bezierCurveTo(-s * 0.55, -s * 0.05, -s * 0.52, -s * 0.52, -s * 0.22, -s * 0.52);
+      c.bezierCurveTo(-s * 0.06, -s * 0.52, 0, -s * 0.36, 0, -s * 0.28);
+      c.bezierCurveTo(0, -s * 0.36, s * 0.06, -s * 0.52, s * 0.22, -s * 0.52);
+      c.bezierCurveTo(s * 0.52, -s * 0.52, s * 0.55, -s * 0.05, 0, s * 0.34);
+      c.closePath();
+    }
+
+    function getVectorBurstSprite(shape, color, isPaper) {
+      const key = `${shape}|${color}|${isPaper ? 1 : 0}`;
+      let cached = vectorSpriteCache.get(key);
+      if (cached) return cached;
+
+      const size = 96;
+      const half = size * 0.5;
+      const off = document.createElement('canvas');
+      off.width = size;
+      off.height = size;
+      const c = off.getContext('2d');
+
+      const renderShape = () => {
+        c.save();
+        c.translate(half, half);
+        c.strokeStyle = color;
+        c.fillStyle = color;
+        c.lineWidth = 3.0;
+        c.lineCap = 'round';
+        c.lineJoin = 'round';
+
+        if (shape === 'gift') {
+          // 简约手绘礼物盒：圆角方盒 + 盒盖 + 十字丝带 + 蝴蝶结
+          c.strokeRect(-14, -6, 28, 22);
+          c.strokeRect(-17, -13, 34, 7);
+          c.beginPath();
+          c.moveTo(0, -13); c.lineTo(0, 16);
+          c.moveTo(-14, 5); c.lineTo(14, 5);
+          // 顶部蝴蝶结两耳
+          c.moveTo(0, -13);
+          c.bezierCurveTo(-12, -26, -17, -14, 0, -13);
+          c.bezierCurveTo(17, -14, 12, -26, 0, -13);
+          c.stroke();
+        } else if (shape === 'bell') {
+          // 简约手绘圣诞铃铛
+          c.beginPath();
+          c.moveTo(-15, 11);
+          c.quadraticCurveTo(-12, 6, -10, -4);
+          c.bezierCurveTo(-10, -17, 10, -17, 10, -4);
+          c.quadraticCurveTo(12, 6, 15, 11);
+          c.closePath();
+          c.stroke();
+          c.beginPath();
+          c.arc(0, -16, 3, 0, Math.PI * 2);
+          c.stroke();
+          c.beginPath();
+          c.arc(0, 15, 3.2, 0, Math.PI * 2);
+          c.fill();
+        } else if (shape === 'hat') {
+          // 简约手绘圣诞帽
+          c.beginPath();
+          c.moveTo(-15, 12);
+          c.quadraticCurveTo(-6, -12, 8, -16);
+          c.quadraticCurveTo(14, -4, 15, 12);
+          c.closePath();
+          c.stroke();
+          c.beginPath();
+          c.roundRect(-18, 10, 36, 7, 3.5);
+          c.stroke();
+          c.beginPath();
+          c.arc(11, -16, 4.2, 0, Math.PI * 2);
+          c.stroke();
+        } else if (shape === 'candy') {
+          // 简约手绘拐杖糖
+          c.lineWidth = 4.2;
+          c.beginPath();
+          c.moveTo(-4, 18);
+          c.lineTo(-4, -8);
+          c.arc(4, -8, 8, Math.PI, 0, false);
+          c.stroke();
+          c.lineWidth = 2.2;
+          c.beginPath();
+          c.moveTo(-7, 10); c.lineTo(-1, 6);
+          c.moveTo(-7, 2);  c.lineTo(-1, -2);
+          c.stroke();
+        } else if (shape === 'miniTree') {
+          // 简约手绘三层小圣诞树
+          c.beginPath();
+          c.moveTo(0, -18); c.lineTo(-10, -6); c.lineTo(10, -6); c.closePath();
+          c.moveTo(0, -10); c.lineTo(-14, 3);  c.lineTo(14, 3);  c.closePath();
+          c.moveTo(0, -1);  c.lineTo(-17, 13); c.lineTo(17, 13); c.closePath();
+          c.moveTo(0, 13);  c.lineTo(0, 20);
+          c.stroke();
+        } else if (shape === 'star') {
+          // 简约手绘空心五角星
+          c.beginPath();
+          for (let i = 0; i < 10; i++) {
+            const r = (i % 2 === 0) ? 18 : 7.5;
+            const a = (i * Math.PI) / 5 - Math.PI / 2;
+            if (i === 0) c.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+            else c.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+          }
+          c.closePath();
+          c.stroke();
+        } else if (shape === 'spark') {
+          // 简约四角星芒 ✦
+          c.beginPath();
+          c.moveTo(0, -17);
+          c.quadraticCurveTo(0, 0, 17, 0);
+          c.quadraticCurveTo(0, 0, 0, 17);
+          c.quadraticCurveTo(0, 0, -17, 0);
+          c.quadraticCurveTo(0, 0, 0, -17);
+          c.closePath();
+          c.stroke();
+        } else if (shape === 'heartOutline') {
+          // 简约空心手绘爱心
+          drawMinimalHeartPath(c, 36);
+          c.stroke();
+        } else if (shape === 'heartSolid') {
+          // 简约小巧实心爱心
+          drawMinimalHeartPath(c, 30);
+          c.fill();
+        } else if (shape === 'heartDouble') {
+          // 简约双层套心
+          drawMinimalHeartPath(c, 38);
+          c.stroke();
+          c.lineWidth = 2.0;
+          drawMinimalHeartPath(c, 22);
+          c.stroke();
+        } else if (shape === 'heartSpark') {
+          // 简约爱心 + 左上微星点
+          drawMinimalHeartPath(c, 32);
+          c.stroke();
+          c.lineWidth = 2.0;
+          c.beginPath();
+          c.moveTo(15, -16); c.lineTo(15, -8);
+          c.moveTo(11, -12); c.lineTo(19, -12);
+          c.stroke();
+        } else if (shape === 'snowClassic') {
+          // 简约六角树枝雪花
+          c.lineWidth = 2.5;
+          for (let i = 0; i < 6; i++) {
+            c.save();
+            c.rotate((i * Math.PI) / 3);
+            c.beginPath();
+            c.moveTo(0, 0); c.lineTo(0, -18);
+            c.moveTo(0, -9); c.lineTo(-5, -13);
+            c.moveTo(0, -9); c.lineTo(5, -13);
+            c.stroke();
+            c.restore();
+          }
+        } else if (shape === 'snowHex') {
+          // 简约六边形几何冰晶雪花
+          c.lineWidth = 2.3;
+          c.beginPath();
+          for (let i = 0; i < 6; i++) {
+            const a = (i * Math.PI) / 3;
+            const px = Math.cos(a) * 8, py = Math.sin(a) * 8;
+            if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
+          }
+          c.closePath();
+          c.stroke();
+          for (let i = 0; i < 6; i++) {
+            c.save();
+            c.rotate((i * Math.PI) / 3);
+            c.beginPath();
+            c.moveTo(8, 0); c.lineTo(19, 0);
+            c.moveTo(13, 0); c.lineTo(16, -4);
+            c.moveTo(13, 0); c.lineTo(16, 4);
+            c.stroke();
+            c.restore();
+          }
+        } else if (shape === 'snowNeedle') {
+          // 简约纤细星晶雪花（主轴+菱形尖端）
+          c.lineWidth = 2.2;
+          for (let i = 0; i < 6; i++) {
+            c.save();
+            c.rotate((i * Math.PI) / 3);
+            c.beginPath();
+            c.moveTo(0, 0); c.lineTo(0, -19);
+            c.stroke();
+            c.beginPath();
+            c.arc(0, -19, 2.0, 0, Math.PI * 2);
+            c.fill();
+            c.restore();
+          }
+        }
+        c.restore();
+      };
+
+      if (!isPaper) {
+        c.shadowColor = color;
+        c.shadowBlur = 14;
+        renderShape();
+        c.shadowBlur = 4;
+        renderShape();
+      } else {
+        renderShape();
+      }
+
+      cached = {
+        canvas: off,
+        w: size,
+        h: size,
+        baseFontPx: 42
+      };
+      vectorSpriteCache.set(key, cached);
+      return cached;
+    }
+
+    // 树上 3D 悬挂极简手绘贺卡贴图缓存器（带挂绳圆环 + 信封/贺卡框 + 迷你印章 + 自定义金星角标）
+    const cardOrnamentCache = new Map();
+
+    function getCardOrnamentSprite(style, color, isCustom, isPaper) {
+      const key = `${style}|${color}|${isCustom ? 1 : 0}|${isPaper ? 1 : 0}`;
+      let cached = cardOrnamentCache.get(key);
+      if (cached) return cached;
+
+      const size = 112;
+      const half = size * 0.5;
+      const off = document.createElement('canvas');
+      off.width = size;
+      off.height = size;
+      const c = off.getContext('2d');
+
+      const drawCard = () => {
+        c.save();
+        c.translate(half, half);
+        c.strokeStyle = color;
+        c.fillStyle = color;
+        c.lineCap = 'round';
+        c.lineJoin = 'round';
+
+        // 1. 顶部小挂绳与圆环（悬挂在树枝上）
+        c.lineWidth = 2.2;
+        c.beginPath();
+        c.moveTo(0, -34);
+        c.lineTo(0, -18);
+        c.stroke();
+        c.beginPath();
+        c.arc(0, -37, 3.6, 0, Math.PI * 2);
+        c.stroke();
+
+        // 2. 贺卡本体半透明微填充 + 极简圆角外框
+        c.save();
+        c.globalAlpha = isPaper ? 0.92 : 0.22;
+        c.fillStyle = isPaper ? '#fffdf6' : color;
+        c.beginPath();
+        c.roundRect(-22, -18, 44, 34, 6);
+        c.fill();
+        c.restore();
+
+        c.lineWidth = isCustom ? 3.2 : 2.6;
+        c.beginPath();
+        c.roundRect(-22, -18, 44, 34, 6);
+        c.stroke();
+
+        // 自定义手写贺卡额外加一层内虚线框，一眼就能在树上认出自己写的卡
+        if (isCustom) {
+          c.save();
+          c.lineWidth = 1.4;
+          c.setLineDash([3, 3]);
+          c.beginPath();
+          c.roundRect(-17.5, -13.5, 35, 25, 3.5);
+          c.stroke();
+          c.restore();
+        }
+
+        // 3. 信封折痕 V 线
+        c.lineWidth = 1.9;
+        c.beginPath();
+        c.moveTo(-20, -15);
+        c.lineTo(0, -2);
+        c.lineTo(20, -15);
+        c.stroke();
+
+        // 4. 卡片中央极简封口徽章（按卡片样式绘制）
+        c.save();
+        c.translate(0, 3);
+        c.lineWidth = 2.0;
+        if (style === 'heart') {
+          drawMinimalHeartPath(c, 16);
+          c.fill();
+        } else if (style === 'star') {
+          c.beginPath();
+          for (let i = 0; i < 10; i++) {
+            const r = (i % 2 === 0) ? 7.5 : 3.2;
+            const a = (i * Math.PI) / 5 - Math.PI / 2;
+            if (i === 0) c.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+            else c.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+          }
+          c.closePath();
+          c.fill();
+        } else if (style === 'snow') {
+          for (let i = 0; i < 6; i++) {
+            c.save();
+            c.rotate((i * Math.PI) / 3);
+            c.beginPath();
+            c.moveTo(0, 0); c.lineTo(0, -7);
+            c.stroke();
+            c.restore();
+          }
+        } else {
+          // gift 迷你十字丝带结
+          c.strokeRect(-5.5, -4, 11, 9);
+          c.beginPath();
+          c.moveTo(0, -4); c.lineTo(0, 5);
+          c.moveTo(-5.5, 0.5); c.lineTo(5.5, 0.5);
+          c.stroke();
+        }
+        c.restore();
+
+        // 自定义贺卡右上角一颗亮星 ✦
+        if (isCustom) {
+          c.save();
+          c.translate(20, -18);
+          c.fillStyle = isPaper ? '#d68910' : '#fff4b8';
+          c.beginPath();
+          c.moveTo(0, -7);
+          c.quadraticCurveTo(0, 0, 7, 0);
+          c.quadraticCurveTo(0, 0, 0, 7);
+          c.quadraticCurveTo(0, 0, -7, 0);
+          c.quadraticCurveTo(0, 0, 0, -7);
+          c.closePath();
+          c.fill();
+          c.restore();
+        }
+
+        c.restore();
+      };
+
+      if (!isPaper) {
+        c.shadowColor = isCustom ? '#ffe07d' : color;
+        c.shadowBlur = isCustom ? 18 : 13;
+        drawCard();
+        c.shadowBlur = 4;
+        drawCard();
+      } else {
+        drawCard();
+      }
+
+      cached = {
+        canvas: off,
+        w: size,
+        h: size,
+        baseFontPx: 46
+      };
+      cardOrnamentCache.set(key, cached);
+      return cached;
+    }
+
+    function getDotSprite(color, isPaper) {
+      const key = `${color}|${isPaper ? 1 : 0}`;
+      let cached = dotSpriteCache.get(key);
+      if (cached) return cached;
+
+      const size = 28;
+      const half = size * 0.5;
+      const off = document.createElement('canvas');
+      off.width = size;
+      off.height = size;
+      const octx = off.getContext('2d');
+
+      const g = octx.createRadialGradient(half, half, 0, half, half, half);
+      if (isPaper) {
+        g.addColorStop(0, color);
+        g.addColorStop(0.55, color);
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+      } else {
+        g.addColorStop(0, '#ffffff');
+        g.addColorStop(0.28, color);
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+      }
+      octx.fillStyle = g;
+      octx.fillRect(0, 0, size, size);
+
+      dotSpriteCache.set(key, off);
+      return off;
+    }
+
+    function rebuildBackgroundCache(w, h) {
+      const theme = THEMES[currentThemeIdx];
+      bgCanvas.width = Math.max(1, w);
+      bgCanvas.height = Math.max(1, h);
+
+      const grad = bgCtx.createRadialGradient(
+        w * 0.52, h * 0.45, 20,
+        w * 0.52, h * 0.48, Math.max(w, h) * 0.78
+      );
+      grad.addColorStop(0, theme.bgTop);
+      grad.addColorStop(0.55, theme.bgMid);
+      grad.addColorStop(1, theme.bgBot);
+      bgCtx.fillStyle = grad;
+      bgCtx.fillRect(0, 0, w, h);
+
+      if (theme.paper) {
+        bgCtx.strokeStyle = 'rgba(130, 118, 102, 0.12)';
+        bgCtx.lineWidth = 1;
+        for (let y = 32; y < h; y += 34) {
+          bgCtx.beginPath();
+          bgCtx.moveTo(0, y);
+          bgCtx.lineTo(w, y);
+          bgCtx.stroke();
+        }
+      }
+    }
+
+    // =========================================================================
+    // 构建 3D 颜文字圣诞树数据
+    // =========================================================================
+    const treeNodes = [];
+    const sparkleNodes = [];
+    const snowNodes = [];
+    const burstEffects = [];
+
+    function rand(a, b) { return a + (b - a) * Math.random(); }
+
+    function buildKaomojiTree() {
+      treeNodes.length = 0;
+      sparkleNodes.length = 0;
+      snowNodes.length = 0;
+
+      const bottomY = -115;
+      const topY = 175;
+      const totalH = topY - bottomY;
+
+      // 1. 树顶璀璨星冠
+      treeNodes.push({
+        type: 'topStar',
+        x: 0, y: topY + 28, z: 0,
+        text: '★', altText: '★',
+        fontSize: 34, colorIdx: -1, phase: 0,
+        blinkTimer: 0, blinking: false, bounce: 0
+      });
+
+      const haloChars = ['✦', '✧', '⋆', '·', 'ミ', '彡', '✧', '✦'];
+      for (let i = 0; i < haloChars.length; i++) {
+        const ang = (i / haloChars.length) * Math.PI * 2;
+        treeNodes.push({
+          type: 'starHalo',
+          x: Math.cos(ang) * 32,
+          y: topY + 28 + Math.sin(ang * 2) * 5,
+          z: Math.sin(ang) * 32,
+          text: haloChars[i], altText: '✧',
+          fontSize: 16, colorIdx: i, phase: ang,
+          blinkTimer: rand(1, 4), blinking: false, bounce: 0
+        });
+      }
+
+      // 2. 分层 3D 圆锥颜文字主体
+      const layers = [
+        { t: 0.96, radius: 10,  count: 2,  scale: 0.96, fixed: ['O v O'] },
+        { t: 0.86, radius: 30,  count: 5,  scale: 0.94, fixed: ['^ω^', '•u<'] },
+        { t: 0.75, radius: 52,  count: 8,  scale: 0.95, fixed: ['(UωU)', '(≧v≦)'] },
+        { t: 0.64, radius: 74,  count: 11, scale: 0.96, fixed: ['๑•ᴗ<๑', '≧0≦', '◍>v<◍'] },
+        { t: 0.52, radius: 96,  count: 14, scale: 0.98, fixed: ['(•̀ᴗ•́)', '(〃•ᴗ•〃)', '(๑•ᴗ•๑)'] },
+        { t: 0.40, radius: 118, count: 17, scale: 1.00, fixed: ['>v°', '〃>ᗜ<〃', '┏•▾•┓', '>v0', '≡ε๑'] },
+        { t: 0.28, radius: 140, count: 20, scale: 1.02, fixed: ['(=^•ω•^=)', '(^>ω<^)', '(≡>u0≡)'] },
+        { t: 0.16, radius: 162, count: 23, scale: 1.04, fixed: null },
+        { t: 0.04, radius: 184, count: 26, scale: 1.06, fixed: null }
+      ];
+
+      let pairCursor = 0;
+      layers.forEach((layer, layerIdx) => {
+        const yBase = bottomY + layer.t * totalH;
+        for (let i = 0; i < layer.count; i++) {
+          const angle = (i / layer.count) * Math.PI * 2 + layerIdx * 0.42;
+          const r = layer.radius + rand(-5, 6);
+          const y = yBase + Math.sin(angle * 3 + layerIdx) * 3.5 + rand(-3, 3);
+
+          let text, altText;
+          if (layer.fixed && i < layer.fixed.length) {
+            text = layer.fixed[i];
+            const found = KAOMOJI_PAIRS.find((p) => p[0] === text);
+            altText = found ? found[1] : text;
+          } else {
+            const pair = KAOMOJI_PAIRS[pairCursor % KAOMOJI_PAIRS.length];
+            pairCursor++;
+            text = pair[0];
+            altText = pair[1];
+          }
+
+          treeNodes.push({
+            type: 'kaomoji',
+            x: Math.cos(angle) * r,
+            y,
+            z: Math.sin(angle) * r,
+            text, altText,
+            fontSize: Math.round(16 * layer.scale),
+            colorIdx: (layerIdx * 2 + i) % 7,
+            phase: rand(0, Math.PI * 2),
+            blinkTimer: rand(1.0, 5.5),
+            blinking: false,
+            bounce: 0
+          });
+        }
+      });
+
+      // 3. 树干文字：Merry / Christmas / to you
+      [
+        { text: 'Merry',     y: bottomY - 26, size: 23 },
+        { text: 'Christmas', y: bottomY - 52, size: 25 },
+        { text: 'to you',    y: bottomY - 78, size: 21 }
+      ].forEach((ln, idx) => {
+        treeNodes.push({
+          type: 'trunkText',
+          x: 0, y: ln.y, z: 0,
+          text: ln.text, altText: ln.text,
+          fontSize: ln.size, colorIdx: idx, phase: idx * 0.8,
+          blinkTimer: 99, blinking: false, bounce: 0
+        });
+      });
+
+      // 4. 螺旋流光星尘丝带 (620 颗预烘焙发光贴图粒子)
+      for (let i = 0; i < 620; i++) {
+        const t = i / 620;
+        const turns = 5.5;
+        const branch = (i % 2 === 0) ? 0 : Math.PI;
+        const ang = t * turns * Math.PI * 2 + branch + rand(-0.12, 0.12);
+        const r = (1 - t) * 188 + 12 + rand(-7, 7);
+        const y = bottomY + t * totalH + rand(-5, 5);
+        sparkleNodes.push({
+          kind: 'ribbon',
+          x: Math.cos(ang) * r, y, z: Math.sin(ang) * r,
+          size: rand(3.5, 7.5),
+          param: t, phase: rand(0, Math.PI * 2), colorIdx: i % 7
+        });
+      }
+
+      // 5. 底部弧形星环地面 (520 颗)
+      for (let i = 0; i < 520; i++) {
+        const u = Math.random();
+        let rad = 55 + Math.pow(u, 0.85) * 285;
+        if (Math.sin(rad * 0.15) < 0 && rad < 210) rad += 14;
+        const ang = Math.random() * Math.PI * 2;
+        const domeDrop = rad * rad * 0.00075;
+        sparkleNodes.push({
+          kind: 'ground',
+          x: Math.cos(ang) * rad,
+          y: bottomY - 72 - domeDrop + rand(-2, 2),
+          z: Math.sin(ang) * rad,
+          size: rand(3.0, 6.5),
+          param: rad / 340, phase: ang * 2, colorIdx: i % 4
+        });
+      }
+
+      // 6. 漫天强化 3D 景深大雪（480 颗：前景发光大雪花 + 中景冰晶雪片 + 远景密集雪尘）
+      const snowGlyphs = ['❄', '❅', '✧', '⋆', '❄', '•'];
+      for (let i = 0; i < 480; i++) {
+        const isFlake = i < 150;      // 150 颗带棱角发光雪花符号
+        const isBigFore = i < 48;     // 48 颗大号前景飘雪，营造浓郁景深
+        snowNodes.push({
+          x: rand(-540, 540),
+          y: rand(-300, 360),
+          z: rand(-480, 480),
+          vy: isBigFore ? rand(-58, -32) : rand(-42, -16),
+          vx: rand(-18, -4), // 轻微斜吹冬风
+          isFlake,
+          glyph: snowGlyphs[i % snowGlyphs.length],
+          size: isBigFore ? rand(18, 28) : (isFlake ? rand(12, 20) : rand(4.5, 9.5)),
+          alphaBase: isBigFore ? rand(0.75, 1.0) : rand(0.45, 0.92),
+          phase: rand(0, Math.PI * 2),
+          swayAmp: rand(8, 24)
+        });
+      }
+    }
+
+    // =========================================================================
+    // 圣诞树祝福贺卡系统（内置 12 张祝福卡 + 支持本地/Cloudflare Workers 全网共享写卡）
+    // =========================================================================
+    // 👇 部署好 cloudflare/worker.js 后，把你的 Worker 网址填在这里即可开启全网共享：
+    // 例如：'https://kaomoji-xmas-cards.你的子域名.workers.dev'
+    const CLOUDFLARE_API_URL = 'https://kaomoji-xmas-cards.kaomoji-xmas-tree.workers.dev';
+
+    const CUSTOM_CARDS_KEY = 'kaomoji_xmas_custom_cards_v1';
+    const OWNER_TOKEN_KEY  = 'kaomoji_xmas_owner_token_v1';
+    const MY_CLOUD_IDS_KEY = 'kaomoji_xmas_my_cloud_ids_v1';
+    const MAX_TREE_ORNAMENTS = 36; // 树上最多同时展示 36 枚 3D 挂卡以保持满帧，其余仍在「再抽一张」盲盒池中
+    const CARD_STYLE_NAMES = {
+      gift: '礼物祝福卡',
+      heart: '暖心告白卡',
+      star: '星愿好运卡',
+      snow: '初雪许愿卡'
+    };
+
+    const DEFAULT_CARDS = [
+      {
+        id: 'sys-1',
+        title: '冬日平安签',
+        kaomoji: '(=^•ω•^=) ♡',
+        style: 'gift',
+        message: '愿这棵闪闪发光的圣诞树，把一整年的温柔、好运与惊喜都悄悄打包送到你手里。圣诞快乐，平安喜乐！',
+        sign: '圣诞小精灵',
+        custom: false
+      },
+      {
+        id: 'sys-2',
+        title: '热可可与落雪',
+        kaomoji: '(〃•ᴗ•〃) ❄',
+        style: 'snow',
+        message: '外面下着漫天雪花，希望你手边总有一杯温热的可可，身边总有温暖的人，心里总有亮晶晶的盼头。',
+        sign: '冬夜来信',
+        custom: false
+      },
+      {
+        id: 'sys-3',
+        title: '圣诞好运暴击',
+        kaomoji: '(≧▽≦) ★',
+        style: 'star',
+        message: '叮咚！你抽中了一张隐藏款幸运签：接下来的日子里，烦恼自动清零，所有努力都会开花结果！',
+        sign: '星顶许愿星',
+        custom: false
+      },
+      {
+        id: 'sys-4',
+        title: '把浪漫寄给你',
+        kaomoji: '(๑•ᴗ•๑) ♡',
+        style: 'heart',
+        message: '如果圣诞老人真的存在，我猜他一定把最甜的糖果和最亮的星光，偷偷放进了你的袜子里。',
+        sign: '偷藏礼物的人',
+        custom: false
+      },
+      {
+        id: 'sys-5',
+        title: '万事胜意',
+        kaomoji: '(｡•̀ᴗ-)✧',
+        style: 'star',
+        message: '愿你眼里有星河，笑里有清风；不必赶路，也能在每一个转角遇见意想不到的美好。',
+        sign: '雪夜漫游者',
+        custom: false
+      },
+      {
+        id: 'sys-6',
+        title: '叮叮当当的祝福',
+        kaomoji: '(UωU) ♪',
+        style: 'gift',
+        message: '听见八音盒的铃声了吗？每一声都是写给你的 Merry Christmas，愿你岁岁常欢愉，年年皆胜意。',
+        sign: '驯鹿快递员',
+        custom: false
+      },
+      {
+        id: 'sys-7',
+        title: '给认真生活的你',
+        kaomoji: '(•̀ᴗ•́) ✦',
+        style: 'snow',
+        message: '辛苦了一整年啦！今晚什么都不用想，允许自己像雪花一样轻盈，好好享受这份属于冬天的节日仪式感吧。',
+        sign: '树梢的星星',
+        custom: false
+      },
+      {
+        id: 'sys-8',
+        title: '限量版偏爱',
+        kaomoji: 'ฅ•ω•ฅ ♡',
+        style: 'heart',
+        message: '世界很大，冬天很冷，但总有一盏暖灯为你亮着。愿你永远被温柔包围，被世界悄悄偏爱。',
+        sign: '一只圣诞小猫',
+        custom: false
+      },
+      {
+        id: 'sys-9',
+        title: '学业 / 事业通关符',
+        kaomoji: '(◍•ᴗ•◍) ★',
+        style: 'star',
+        message: '愿你遇到的难题都有优雅的解法，写下的代码一遍通过，奔赴的每一场热爱都闪闪发光！',
+        sign: '魔法公式屋',
+        custom: false
+      },
+      {
+        id: 'sys-10',
+        title: '初雪心愿盒',
+        kaomoji: '๑•ᴗ<๑ ❄',
+        style: 'snow',
+        message: '在雪落下来之前闭上眼睛许个愿吧——悄悄告诉你，挂在这棵树上的愿望实现率高达 100%！',
+        sign: '极光守望者',
+        custom: false
+      },
+      {
+        id: 'sys-11',
+        title: '圣诞快乐呀',
+        kaomoji: '(^>ω<^) ✦',
+        style: 'gift',
+        message: '把一整棵颜文字圣诞树送给你，每一张笑脸都在替我说：愿你今天开心，明天更开心！',
+        sign: '颜文字合唱团',
+        custom: false
+      },
+      {
+        id: 'sys-12',
+        title: '来年续写浪漫',
+        kaomoji: '(≡^u^≡) ♡',
+        style: 'heart',
+        message: '今年的故事即将画上温暖的句点，愿新的一年里，你喜欢的都拥有，失去的都释怀，一切皆如所愿。',
+        sign: '时光邮差',
+        custom: false
+      }
+    ];
+
+    let allCards = [];
+    const cloudStatusTextEl = document.getElementById('cloudSyncText');
+    const apiBase = CLOUDFLARE_API_URL.trim().replace(/\/+$/, '');
+    const isCloudEnabled = Boolean(apiBase);
+
+    function setCloudStatus(text) {
+      if (cloudStatusTextEl) cloudStatusTextEl.textContent = text;
+    }
+
+    function getOwnerToken() {
+      try {
+        let tok = localStorage.getItem(OWNER_TOKEN_KEY);
+        if (!tok) {
+          tok = (crypto.randomUUID ? crypto.randomUUID() : ('tok-' + Date.now() + '-' + Math.random().toString(36).slice(2)));
+          localStorage.setItem(OWNER_TOKEN_KEY, tok);
+        }
+        return tok;
+      } catch {
+        return 'anon-session';
+      }
+    }
+
+    function getMyCloudIds() {
+      try {
+        const raw = localStorage.getItem(MY_CLOUD_IDS_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return new Set(Array.isArray(parsed) ? parsed : []);
+      } catch {
+        return new Set();
+      }
+    }
+
+    function saveMyCloudIds(set) {
+      try {
+        localStorage.setItem(MY_CLOUD_IDS_KEY, JSON.stringify(Array.from(set)));
+      } catch {}
+    }
+
+    function loadCardsFromStorage() {
+      if (isCloudEnabled) {
+        allCards = [...DEFAULT_CARDS];
+        updateCardCountBadge();
+        setCloudStatus('正在同步共享信箱');
+        return;
+      }
+      let customCards = [];
+      try {
+        const raw = localStorage.getItem(CUSTOM_CARDS_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) customCards = parsed.map((c) => ({ ...c, mine: true }));
+        }
+      } catch (err) {
+        console.warn('读取本地贺卡失败:', err);
+      }
+      allCards = [...DEFAULT_CARDS, ...customCards];
+      updateCardCountBadge();
+      setCloudStatus('本地模式 · 仅当前浏览器可见');
+    }
+
+    function saveCustomCardsToStorage() {
+      if (isCloudEnabled) {
+        updateCardCountBadge();
+        return;
+      }
+      try {
+        const customOnly = allCards.filter((c) => c.custom);
+        localStorage.setItem(CUSTOM_CARDS_KEY, JSON.stringify(customOnly));
+      } catch (err) {
+        console.warn('保存本地贺卡失败:', err);
+      }
+      updateCardCountBadge();
+    }
+
+    async function syncCardsFromCloud() {
+      if (!isCloudEnabled) return;
+      try {
+        const res = await fetch(`${apiBase}/api/cards?limit=80`, { method: 'GET' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const myIds = getMyCloudIds();
+        const remoteCards = Array.isArray(data.cards) ? data.cards.map((c) => ({
+          ...c,
+          custom: true,
+          mine: myIds.has(c.id)
+        })) : [];
+        // 最新的全网贺卡排在前面，同时保留内置 12 张保底
+        allCards = [...remoteCards, ...DEFAULT_CARDS];
+        updateCardCountBadge();
+        mountAllCardsOnTree();
+        bindSpritesForTheme();
+        setCloudStatus(`云端已同步 · ${remoteCards.length} 封共享来信`);
+      } catch (err) {
+        console.warn('云端同步失败:', err);
+        setCloudStatus('云端暂未连通 · 显示默认祝福');
+      }
+    }
+
+    function updateCardCountBadge() {
+      const el = document.getElementById('cardCountBadge');
+      if (el) el.textContent = String(allCards.length);
+    }
+
+    // 将一张祝福贺卡作为 3D 挂件节点挂到圣诞树上
+    function createCardOrnamentNode(card, idx, total, forcedAngle = null) {
+      const bottomY = -115;
+      const topY = 175;
+      const totalH = topY - bottomY;
+      // 分布在树身中下至中上部（视觉最显眼、最好点击的位置）
+      const t = (forcedAngle !== null)
+        ? rand(0.24, 0.72)
+        : (0.14 + ((idx + 0.5) / Math.max(1, total)) * 0.70);
+      const radius = (1 - t) * 182 + 24;
+      const angle = (forcedAngle !== null)
+        ? forcedAngle
+        : (idx * 2.39996 + 0.35); // 黄金角 360° 均匀错落悬挂
+
+      return {
+        type: 'cardOrnament',
+        cardId: card.id,
+        card,
+        x: Math.cos(angle) * radius,
+        y: bottomY + t * totalH,
+        z: Math.sin(angle) * radius,
+        fontSize: card.custom ? 30 : 26,
+        colorIdx: idx % 7,
+        phase: rand(0, Math.PI * 2),
+        hoverScale: 1.0,
+        bounce: (forcedAngle !== null) ? 1.0 : 0.0
+      };
+    }
+
+    function mountAllCardsOnTree() {
+      // 清除旧的挂卡节点后重新挂载
+      for (let i = treeNodes.length - 1; i >= 0; i--) {
+        if (treeNodes[i].type === 'cardOrnament') treeNodes.splice(i, 1);
+      }
+      // 树上最多同时展示 MAX_TREE_ORNAMENTS 个 3D 挂件以保障 60+ FPS，其余全部保留在「再抽一张」池中
+      const visibleCards = allCards.slice(0, MAX_TREE_ORNAMENTS);
+      visibleCards.forEach((card, idx) => {
+        treeNodes.push(createCardOrnamentNode(card, idx, visibleCards.length));
+      });
+    }
+
+    // 绑定当前主题对应的预渲染贴图指针，主循环中彻底消除 Map 查找与字符串拼接！
+    function bindSpritesForTheme() {
+      const theme = THEMES[currentThemeIdx];
+      const isPaper = theme.paper;
+
+      for (const n of treeNodes) {
+        if (n.type === 'topStar') {
+          n.spriteA = getTextSprite('★', theme.starColor, isPaper, 'normal');
+          n.spriteB = n.spriteA;
+        } else if (n.type === 'trunkText') {
+          n.spriteA = getTextSprite(n.text, theme.trunkColor, isPaper, 'trunk');
+          n.spriteB = n.spriteA;
+        } else if (n.type === 'starHalo') {
+          n.spriteA = getTextSprite(n.text, theme.starColor, isPaper, 'normal');
+          n.spriteB = getTextSprite(n.altText, theme.starColor, isPaper, 'normal');
+        } else if (n.type === 'cardOrnament') {
+          const col = n.card.custom
+            ? (isPaper ? '#c83e4d' : '#ffe07d')
+            : theme.palette[(n.colorIdx + 1) % theme.palette.length];
+          n.spriteA = getCardOrnamentSprite(n.card.style || 'gift', col, !!n.card.custom, isPaper);
+          n.spriteB = n.spriteA;
+        } else {
+          const col = theme.palette[n.colorIdx % theme.palette.length];
+          n.spriteA = getTextSprite(n.text, col, isPaper, 'normal');
+          n.spriteB = getTextSprite(n.altText, col, isPaper, 'normal');
+        }
+      }
+
+      for (const sp of sparkleNodes) {
+        const col = (sp.kind === 'ribbon')
+          ? (sp.colorIdx % 3 === 0 ? theme.ribbonColor : theme.palette[sp.colorIdx % theme.palette.length])
+          : theme.groundPalette[sp.colorIdx % theme.groundPalette.length];
+        sp.sprite = getDotSprite(col, isPaper);
+      }
+
+      const snowDot = getDotSprite(theme.snowColor, isPaper);
+      for (const s of snowNodes) {
+        if (s.isFlake) {
+          s.sprite = getTextSprite(s.glyph, theme.snowColor, isPaper, 'normal');
+        } else {
+          s.dotSprite = snowDot;
+        }
+      }
+    }
+
+    buildKaomojiTree();
+    loadCardsFromStorage();
+    mountAllCardsOnTree();
+    bindSpritesForTheme();
+    syncCardsFromCloud();
+
+    // =========================================================================
+    // 鼠标拖拽 360° 自由旋转 + 惯性 + 滚轮缩放 + 右键平移 + 点击放飞烟花
+    // =========================================================================
+    let yaw = 0.0;
+    let pitch = 0.08;
+    let velYaw = -0.35;
+    let velPitch = 0.0;
+    let camDist = 520;
+    let targetDist = 520;
+    let panX = 35;
+    let panY = 18;
+
+    let autoRotate = true;
+    let autoSpeed = 0.35;
+    let sizeMultiplier = 1.05;
+    let glowMultiplier = 1.15;
+
+    let pointerDownLeft = false;
+    let draggingLeft = false;
+    let draggingRight = false;
+    let pointerDownX = 0;
+    let pointerDownY = 0;
+    let lastX = 0;
+    let lastY = 0;
+    let mouseX = -9999;
+    let mouseY = -9999;
+
+    function spawnBurst(sx, sy) {
+      const theme = THEMES[currentThemeIdx];
+      const cfg = THEME_BURSTS[currentThemeIdx];
+
+      if (cfg.mode === 'xmas') {
+        // 🎄 风格1：简约手绘线条圣诞元素（礼物盒、铃铛、圣诞帽、拐杖糖、小树、星芒）
+        const count = 15;
+        for (let i = 0; i < count; i++) {
+          const ang = (i / count) * Math.PI * 2 + rand(-0.22, 0.22);
+          const spd = rand(85, 230);
+          const shp = cfg.shapes[Math.floor(Math.random() * cfg.shapes.length)];
+          const col = theme.palette[i % theme.palette.length];
+          burstEffects.push({
+            x: sx, y: sy,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd - 95,
+            gravity: 260,
+            drag: 0.99,
+            rot: rand(-0.3, 0.3),
+            vrot: rand(-2.8, 2.8),
+            swayAmp: 0,
+            phase: rand(0, Math.PI * 2),
+            sprite: getVectorBurstSprite(shp, col, false),
+            life: 1.0,
+            decay: rand(0.68, 1.02),
+            size: rand(22, 32)
+          });
+        }
+      } else if (cfg.mode === 'formula') {
+        // 📖 风格2：数理化公式从纸页间飘散绽放（简约钢笔手写墨水色）
+        const inkPalette = ['#23201d', '#b8323e', '#1f6b48', '#274c77', '#9c5a14'];
+        const count = 11;
+        for (let i = 0; i < count; i++) {
+          const ang = (i / count) * Math.PI * 2 + rand(-0.25, 0.25);
+          const spd = rand(75, 195);
+          const txt = cfg.items[Math.floor(Math.random() * cfg.items.length)];
+          const col = inkPalette[i % inkPalette.length];
+          burstEffects.push({
+            x: sx, y: sy,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd - 45,
+            gravity: 42,
+            drag: 0.96,
+            rot: rand(-0.22, 0.22),
+            vrot: rand(-0.55, 0.55),
+            swayAmp: 12,
+            phase: rand(0, Math.PI * 2),
+            sprite: getTextSprite(txt, col, true, 'formula'),
+            life: 1.0,
+            decay: rand(0.55, 0.85),
+            size: rand(16, 22)
+          });
+        }
+      } else if (cfg.mode === 'heart') {
+        // 🌸 风格3：极简粉金手绘线条爱心（空心/实心/双层套心/微星心，浪漫浮空上升）
+        const heartColors = ['#ff85b3', '#ffb3d1', '#ffe08a', '#ff5c93', '#ffd6e8', '#e0aaff'];
+        const count = 16;
+        for (let i = 0; i < count; i++) {
+          const ang = rand(-Math.PI, 0) + rand(-0.4, 0.4);
+          const spd = rand(50, 160);
+          const shp = cfg.shapes[Math.floor(Math.random() * cfg.shapes.length)];
+          const col = heartColors[i % heartColors.length];
+          burstEffects.push({
+            x: sx + rand(-10, 10), y: sy + rand(-10, 10),
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd - 55,
+            gravity: -95,
+            drag: 0.965,
+            rot: rand(-0.28, 0.28),
+            vrot: rand(-0.9, 0.9),
+            swayAmp: rand(35, 72),
+            phase: rand(0, Math.PI * 2),
+            sprite: getVectorBurstSprite(shp, col, false),
+            life: 1.0,
+            decay: rand(0.55, 0.88),
+            size: rand(20, 32)
+          });
+        }
+      } else {
+        // 🌌 风格4：极简几何线条冰晶雪花（六角树枝/六边形冰晶/星晶针，旋转飘落）
+        const snowColors = ['#e0f7ff', '#67e8f9', '#a5b4fc', '#c084fc', '#ffffff', '#5eead4'];
+        const count = 18;
+        for (let i = 0; i < count; i++) {
+          const ang = (i / count) * Math.PI * 2 + rand(-0.15, 0.15);
+          const spd = rand(80, 215);
+          const shp = cfg.shapes[Math.floor(Math.random() * cfg.shapes.length)];
+          const col = snowColors[i % snowColors.length];
+          burstEffects.push({
+            x: sx, y: sy,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd,
+            gravity: 52,
+            drag: 0.935,
+            rot: rand(0, Math.PI * 2),
+            vrot: rand(-4.2, 4.2),
+            swayAmp: rand(15, 32),
+            phase: rand(0, Math.PI * 2),
+            sprite: getVectorBurstSprite(shp, col, false),
+            life: 1.0,
+            decay: rand(0.52, 0.84),
+            size: rand(20, 32)
+          });
+        }
+      }
+
+      for (const n of treeNodes) {
+        if (n.type === 'kaomoji' && Math.random() < 0.35) {
+          n.bounce = 1.0;
+          n.blinking = true;
+          n.blinkTimer = 0.45;
+        }
+      }
+    }
+
+    // =========================================================================
+    // 3D 信封祝福贺卡弹窗 & 手写挂卡交互控制器（支持空间坐标弹出、3D 翻盖拆封、抽信换卡、轻盈退场）
+    // =========================================================================
+    const cardModalBackdrop    = document.getElementById('cardModalBackdrop');
+    const composeModalBackdrop = document.getElementById('composeModalBackdrop');
+    const envelopeShell        = document.getElementById('envelopeShell');
+    const envWaxSeal           = document.getElementById('envWaxSeal');
+    const cardTagPill          = document.getElementById('cardTagPill');
+    const cardStyleLabel       = document.getElementById('cardStyleLabel');
+    const cardKaomojiDisplay   = document.getElementById('cardKaomojiDisplay');
+    const cardTitleDisplay     = document.getElementById('cardTitleDisplay');
+    const cardBodyDisplay      = document.getElementById('cardBodyDisplay');
+    const cardSignDisplay      = document.getElementById('cardSignDisplay');
+    const btnDeleteCard        = document.getElementById('btnDeleteCard');
+    const toastEl              = document.getElementById('toastMsg');
+
+    const WAX_SEAL_GLYPHS = {
+      gift: '✦',
+      heart: '♥',
+      star: '★',
+      snow: '❄'
+    };
+
+    let currentOpenedCard = null;
+    let lastRandomCardId = null;
+    let selectedComposeKaomoji = '(=^•ω•^=) ♡';
+    let selectedComposeStyle = 'gift';
+    let toastTimer = null;
+    let openFlapTimer = null;
+    let swapLetterTimer = null;
+    let closeModalTimer = null;
+
+    function clearModalTimers() {
+      clearTimeout(openFlapTimer);
+      clearTimeout(swapLetterTimer);
+      clearTimeout(closeModalTimer);
+    }
+
+    function showToast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2600);
+    }
+
+    function fillCardContent(card, fromHangingCard) {
+      currentOpenedCard = card;
+      lastRandomCardId = card.id;
+      const idx = allCards.findIndex((c) => c.id === card.id);
+      const numStr = String(idx + 1).padStart(2, '0');
+      const canDelete = Boolean(card.custom && (!isCloudEnabled || card.mine));
+
+      cardTagPill.textContent = card.mine
+        ? `我的手写贺卡 · No.${numStr}`
+        : (card.custom
+          ? `共享树来信 · No.${numStr}`
+          : (fromHangingCard ? `树上挂卡 · No.${numStr}` : `随机盲盒 · No.${numStr}`));
+      cardStyleLabel.textContent = CARD_STYLE_NAMES[card.style] || '圣诞祝福卡';
+      envWaxSeal.textContent = WAX_SEAL_GLYPHS[card.style] || '★';
+      cardKaomojiDisplay.textContent = card.kaomoji || '(=^•ω•^=) ♡';
+      cardTitleDisplay.textContent = card.title || '圣诞快乐';
+      cardBodyDisplay.textContent = card.message;
+      cardSignDisplay.textContent = `—— ${card.sign || '匿名圣诞老人'}`;
+      btnDeleteCard.style.display = canDelete ? 'inline-block' : 'none';
+    }
+
+    // 带空间发射起点 (originX, originY) 的 3D 信封弹出与拆封编排
+    function openCardModal(card, fromHangingCard = false, originX = null, originY = null) {
+      if (!card) return;
+      clearModalTimers();
+      fillCardContent(card, fromHangingCard);
+
+      // 计算点击位置相对屏幕中心的偏移量（遵循 1/3 屏运动距离法则，防止跨屏飞跃失焦）
+      const maxDx = Math.min(260, viewW * 0.28);
+      const maxDy = Math.min(200, viewH * 0.28);
+      const dx = originX !== null ? Math.max(-maxDx, Math.min(maxDx, originX - viewW * 0.5)) : 0;
+      const dy = originY !== null ? Math.max(-maxDy, Math.min(maxDy, originY - viewH * 0.5)) : 28;
+      const tilt = Math.max(-10, Math.min(10, dx * -0.032));
+
+      envelopeShell.style.setProperty('--origin-x', `${dx.toFixed(1)}px`);
+      envelopeShell.style.setProperty('--origin-y', `${dy.toFixed(1)}px`);
+      envelopeShell.style.setProperty('--origin-rot', `${tilt.toFixed(1)}deg`);
+
+      composeModalBackdrop.classList.remove('open', 'closing');
+      cardModalBackdrop.classList.remove('closing');
+
+      // 复位信封到合拢待发射状态
+      envelopeShell.classList.remove('is-entering', 'is-opened', 'is-swapping');
+      cardModalBackdrop.classList.add('open');
+      void envelopeShell.offsetWidth; // 强制同步初始空间起点帧
+
+      // Beat 1 (0ms): 信封从点击处弹簧飞出至画面中央
+      requestAnimationFrame(() => {
+        envelopeShell.classList.add('is-entering');
+      });
+
+      // Beat 2 (200ms): 到达落点后，火漆印章解封 -> 3D 翻盖向上折开 -> 祝福信纸抽出并错峰显现
+      openFlapTimer = setTimeout(() => {
+        envelopeShell.classList.add('is-opened');
+      }, 200);
+    }
+
+    function pickRandomCard() {
+      if (!allCards.length) return null;
+      let pool = allCards;
+      if (allCards.length > 1 && lastRandomCardId) {
+        pool = allCards.filter((c) => c.id !== lastRandomCardId);
+      }
+      return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    function openRandomCard(originX = null, originY = null) {
+      const picked = pickRandomCard();
+      if (picked) openCardModal(picked, false, originX, originY);
+    }
+
+    // 在信封已打开状态下点击「再抽一张」：信纸缩回袋中 -> 替换新信 -> 轻快滑出
+    function swapToRandomCard() {
+      const picked = pickRandomCard();
+      if (!picked) return;
+      clearTimeout(swapLetterTimer);
+      envelopeShell.classList.add('is-swapping');
+      swapLetterTimer = setTimeout(() => {
+        fillCardContent(picked, false);
+        void envelopeShell.offsetWidth;
+        envelopeShell.classList.remove('is-swapping');
+      }, 175);
+    }
+
+    function openComposeModal() {
+      clearModalTimers();
+      cardModalBackdrop.classList.remove('open', 'closing');
+      envelopeShell.classList.remove('is-entering', 'is-opened', 'is-swapping');
+      composeModalBackdrop.classList.remove('closing');
+      composeModalBackdrop.classList.add('open');
+      setTimeout(() => document.getElementById('inputCardMsg').focus(), 100);
+    }
+
+    // 轻盈退场（鼠标点击退场保留 190ms 柔和离场；键盘 Esc 则瞬间响应不拖沓）
+    function closeAllModals(instant = false) {
+      clearModalTimers();
+      const anyOpen = cardModalBackdrop.classList.contains('open') || composeModalBackdrop.classList.contains('open');
+      if (!anyOpen) return;
+
+      if (instant) {
+        cardModalBackdrop.classList.remove('open', 'closing');
+        composeModalBackdrop.classList.remove('open', 'closing');
+        envelopeShell.classList.remove('is-entering', 'is-opened', 'is-swapping');
+        return;
+      }
+
+      if (cardModalBackdrop.classList.contains('open')) cardModalBackdrop.classList.add('closing');
+      if (composeModalBackdrop.classList.contains('open')) composeModalBackdrop.classList.add('closing');
+
+      closeModalTimer = setTimeout(() => {
+        cardModalBackdrop.classList.remove('open', 'closing');
+        composeModalBackdrop.classList.remove('open', 'closing');
+        envelopeShell.classList.remove('is-entering', 'is-opened', 'is-swapping');
+      }, 195);
+    }
+
+    // 点击圣诞树画布时的智能判定：
+    // 1. 始终触发当前主题极简点击粒子
+    // 2. 点到树上悬挂的具体贺卡 -> 信封从该挂卡 3D 位置弹出并拆开
+    // 3. 点到圣诞树任意部位 -> 随机抽一张信封从点击点弹出并拆开
+    // 4. 点到空白星空 -> 仅展示粒子特效，不弹弹窗
+    function handleCanvasClick(sx, sy) {
+      spawnBurst(sx, sy);
+
+      // 优先从前景到背景检测是否点中了树上挂着的贺卡
+      for (let i = renderQueue.length - 1; i >= 0; i--) {
+        const item = renderQueue[i];
+        if (item.node.type !== 'cardOrnament') continue;
+        const hitR = Math.max(22, Math.min(44, 28 * item.scale * sizeMultiplier));
+        const dist = Math.hypot(sx - item.sx, sy - item.sy);
+        if (dist <= hitR) {
+          item.node.bounce = 1.0;
+          openCardModal(item.node.card, true, item.sx, item.sy);
+          return;
+        }
+      }
+
+      // 其次检测是否点中了圣诞树本体任意部位（点随机部位出随机信封贺卡）
+      for (let i = renderQueue.length - 1; i >= 0; i--) {
+        const item = renderQueue[i];
+        const t = item.node.type;
+        if (t !== 'kaomoji' && t !== 'topStar' && t !== 'trunkText') continue;
+        const hitR = Math.max(28, Math.min(54, 38 * item.scale * sizeMultiplier));
+        const dist = Math.hypot(sx - item.sx, sy - item.sy);
+        if (dist <= hitR) {
+          openRandomCard(sx, sy);
+          return;
+        }
+      }
+    }
+
+    // 绑定弹窗与手写表单按钮
+    document.getElementById('btnWriteCard').addEventListener('click', openComposeModal);
+    document.getElementById('btnOpenComposeFromCard').addEventListener('click', openComposeModal);
+    document.getElementById('btnRandomAnother').addEventListener('click', swapToRandomCard);
+    document.getElementById('btnCloseCardModal').addEventListener('click', () => closeAllModals(false));
+    document.getElementById('btnCloseComposeModal').addEventListener('click', () => closeAllModals(false));
+    document.getElementById('btnCancelCompose').addEventListener('click', () => closeAllModals(false));
+
+    cardModalBackdrop.addEventListener('click', (e) => {
+      if (e.target === cardModalBackdrop) closeAllModals(false);
+    });
+    composeModalBackdrop.addEventListener('click', (e) => {
+      if (e.target === composeModalBackdrop) closeAllModals(false);
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeAllModals(true);
+    });
+
+    // 摘下自己写的贺卡
+    btnDeleteCard.addEventListener('click', async () => {
+      if (!currentOpenedCard || !currentOpenedCard.custom) return;
+      const targetId = currentOpenedCard.id;
+
+      if (isCloudEnabled) {
+        btnDeleteCard.disabled = true;
+        try {
+          const res = await fetch(`${apiBase}/api/cards/${encodeURIComponent(targetId)}`, {
+            method: 'DELETE',
+            headers: { 'X-Owner-Token': getOwnerToken() }
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            showToast(data.error || '摘下失败，只有原作者才能删除哦');
+            return;
+          }
+          const myIds = getMyCloudIds();
+          myIds.delete(targetId);
+          saveMyCloudIds(myIds);
+        } catch (err) {
+          showToast('网络开小差了，请稍后再试');
+          return;
+        } finally {
+          btnDeleteCard.disabled = false;
+        }
+      }
+
+      allCards = allCards.filter((c) => c.id !== targetId);
+      saveCustomCardsToStorage();
+      mountAllCardsOnTree();
+      bindSpritesForTheme();
+      if (isCloudEnabled) {
+        const cloudCount = allCards.filter((c) => c.custom).length;
+        setCloudStatus(`云端已同步 · ${cloudCount} 封共享来信`);
+      }
+      closeAllModals();
+      showToast('已从树上摘下这张贺卡');
+    });
+
+    // 颜文字印章 & 卡片样式选择器
+    document.querySelectorAll('#kaomojiPicker .picker-chip').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('#kaomojiPicker .picker-chip').forEach((c) => c.classList.remove('active'));
+        chip.classList.add('active');
+        selectedComposeKaomoji = chip.dataset.val;
+      });
+    });
+    document.querySelectorAll('#cardStylePicker .picker-chip').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('#cardStylePicker .picker-chip').forEach((c) => c.classList.remove('active'));
+        chip.classList.add('active');
+        selectedComposeStyle = chip.dataset.style;
+      });
+    });
+
+    // 提交手写贺卡并直接挂到当前面向观众的圣诞树正面！
+    const btnSubmitCard = document.getElementById('btnSubmitCard');
+    btnSubmitCard.addEventListener('click', async () => {
+      const titleEl = document.getElementById('inputCardTitle');
+      const msgEl   = document.getElementById('inputCardMsg');
+      const signEl  = document.getElementById('inputCardSign');
+
+      const message = msgEl.value.trim();
+      if (!message) {
+        msgEl.focus();
+        showToast('请先写下祝福语');
+        return;
+      }
+
+      const payload = {
+        title: titleEl.value.trim() || '我的圣诞心愿',
+        kaomoji: selectedComposeKaomoji,
+        style: selectedComposeStyle,
+        message,
+        sign: signEl.value.trim() || '路过的圣诞老人'
+      };
+
+      let newCard;
+      if (isCloudEnabled) {
+        btnSubmitCard.disabled = true;
+        btnSubmitCard.textContent = '正在挂上树';
+        try {
+          const ownerToken = getOwnerToken();
+          const res = await fetch(`${apiBase}/api/cards`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...payload, ownerToken })
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !data.card) {
+            showToast(data.error || '发送失败，请稍后重试');
+            return;
+          }
+          newCard = { ...data.card, custom: true, mine: true };
+          const myIds = getMyCloudIds();
+          myIds.add(newCard.id);
+          saveMyCloudIds(myIds);
+        } catch (err) {
+          showToast('连接云端失败，请检查网络');
+          return;
+        } finally {
+          btnSubmitCard.disabled = false;
+          btnSubmitCard.textContent = '挂到树上';
+        }
+      } else {
+        newCard = {
+          id: 'user-' + Date.now(),
+          ...payload,
+          custom: true,
+          mine: true
+        };
+      }
+
+      allCards.unshift(newCard);
+      saveCustomCardsToStorage();
+
+      // 计算当前正朝向屏幕前方的树身角度，让新挂上去的贺卡第一时间闪亮出现在你眼前
+      const frontAngle = -yaw - Math.PI * 0.5 + rand(-0.35, 0.35);
+      const newNode = createCardOrnamentNode(newCard, 0, allCards.length, frontAngle);
+      treeNodes.push(newNode);
+      bindSpritesForTheme();
+      if (isCloudEnabled) {
+        const cloudCount = allCards.filter((c) => c.custom).length;
+        setCloudStatus(`云端已同步 · ${cloudCount} 封共享来信`);
+      }
+
+      titleEl.value = '';
+      msgEl.value = '';
+      signEl.value = '';
+      closeAllModals();
+
+      // 在屏幕中心偏树身处燃放庆祝粒子并弹出提示
+      spawnBurst(viewW * 0.52 + panX, viewH * 0.46);
+      showToast(isCloudEnabled
+        ? '已挂上共享圣诞树，来访的人都能看到'
+        : '已挂上圣诞树');
+    });
+
+    canvas.addEventListener('mousedown', (e) => {
+      if (e.button === 0) {
+        pointerDownLeft = true;
+        draggingLeft = false;
+      }
+      if (e.button === 2) draggingRight = true;
+      pointerDownX = lastX = e.clientX;
+      pointerDownY = lastY = e.clientY;
+    });
+
+    window.addEventListener('mouseup', (e) => {
+      if (pointerDownLeft && !draggingLeft) {
+        handleCanvasClick(e.clientX, e.clientY);
+      }
+      pointerDownLeft = false;
+      draggingLeft = false;
+      draggingRight = false;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      if (!pointerDownLeft && !draggingRight) return;
+
+      if (pointerDownLeft && !draggingLeft) {
+        if (Math.hypot(e.clientX - pointerDownX, e.clientY - pointerDownY) < 5) {
+          return;
+        }
+        draggingLeft = true;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        return;
+      }
+
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      lastX = e.clientX;
+      lastY = e.clientY;
+
+      if (draggingLeft) {
+        const sens = 0.0068;
+        yaw += dx * sens;
+        pitch = Math.max(-0.55, Math.min(1.15, pitch + dy * sens));
+        velYaw = dx * 0.28;
+        velPitch = dy * 0.25;
+      } else if (draggingRight) {
+        panX += dx * 0.8;
+        panY += dy * 0.55;
+      }
+    });
+
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      targetDist = Math.max(230, Math.min(920, targetDist + e.deltaY * 0.32));
+    }, { passive: false });
+
+    canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        pointerDownLeft = true;
+        draggingLeft = false;
+        pointerDownX = lastX = e.touches[0].clientX;
+        pointerDownY = lastY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchend', () => {
+      if (pointerDownLeft && !draggingLeft) {
+        handleCanvasClick(pointerDownX, pointerDownY);
+      }
+      pointerDownLeft = false;
+      draggingLeft = false;
+    });
+    window.addEventListener('touchmove', (e) => {
+      if (!pointerDownLeft || e.touches.length !== 1) return;
+      const tx = e.touches[0].clientX;
+      const ty = e.touches[0].clientY;
+      if (!draggingLeft) {
+        if (Math.hypot(tx - pointerDownX, ty - pointerDownY) < 5) return;
+        draggingLeft = true;
+        lastX = tx;
+        lastY = ty;
+        return;
+      }
+      const dx = tx - lastX;
+      const dy = ty - lastY;
+      lastX = tx;
+      lastY = ty;
+      yaw += dx * 0.0068;
+      pitch = Math.max(-0.55, Math.min(1.15, pitch + dy * 0.0068));
+      velYaw = dx * 0.25;
+      velPitch = dy * 0.25;
+    }, { passive: true });
+
+    // =========================================================================
+    // UI 控制 & 圣诞八音盒
+    // =========================================================================
+    document.querySelectorAll('.theme-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.theme-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentThemeIdx = parseInt(btn.dataset.theme, 10);
+        document.body.classList.toggle('paper-mode', THEMES[currentThemeIdx].paper);
+        bindSpritesForTheme();
+        rebuildBackgroundCache(viewW, viewH);
+      });
+    });
+
+    document.getElementById('sizeSlider').addEventListener('input', (e) => {
+      sizeMultiplier = parseFloat(e.target.value);
+    });
+    document.getElementById('speedSlider').addEventListener('input', (e) => {
+      autoSpeed = parseFloat(e.target.value);
+    });
+    document.getElementById('glowSlider').addEventListener('input', (e) => {
+      glowMultiplier = parseFloat(e.target.value);
+    });
+
+    const btnAutoRotate = document.getElementById('btnAutoRotate');
+    btnAutoRotate.addEventListener('click', () => {
+      autoRotate = !autoRotate;
+      btnAutoRotate.classList.toggle('active', autoRotate);
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+      pitch = 0.08;
+      targetDist = 520;
+      panX = 35;
+      panY = 18;
+      velYaw = -autoSpeed;
+      velPitch = 0;
+    });
+
+    let audioCtx = null;
+    let musicTimer = null;
+    let musicPlaying = false;
+    const btnMusic = document.getElementById('btnMusic');
+    const jingleBells = [
+      [659.25, 0.25], [659.25, 0.25], [659.25, 0.5],
+      [659.25, 0.25], [659.25, 0.25], [659.25, 0.5],
+      [659.25, 0.25], [783.99, 0.25], [523.25, 0.35], [587.33, 0.15], [659.25, 0.8],
+      [698.46, 0.25], [698.46, 0.25], [698.46, 0.35], [698.46, 0.15],
+      [698.46, 0.25], [659.25, 0.25], [659.25, 0.25], [659.25, 0.25],
+      [659.25, 0.25], [587.33, 0.25], [587.33, 0.25], [659.25, 0.25], [587.33, 0.5], [783.99, 0.5]
+    ];
+
+    function playNote(freq, dur) {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const overtone = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      overtone.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now);
+      overtone.frequency.setValueAtTime(freq * 2, now);
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.exponentialRampToValueAtTime(0.11, now + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0008, now + dur * 1.8);
+      osc.connect(gain);
+      overtone.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      overtone.start(now);
+      osc.stop(now + dur * 1.85);
+      overtone.stop(now + dur * 1.85);
+    }
+
+    btnMusic.addEventListener('click', () => {
+      musicPlaying = !musicPlaying;
+      btnMusic.classList.toggle('active', musicPlaying);
+      if (musicPlaying) {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        let idx = 0;
+        const loop = () => {
+          if (!musicPlaying) return;
+          const [f, d] = jingleBells[idx];
+          playNote(f, d);
+          idx = (idx + 1) % jingleBells.length;
+          musicTimer = setTimeout(loop, d * 880);
+        };
+        loop();
+      } else {
+        clearTimeout(musicTimer);
+      }
+    });
+
+    // =========================================================================
+    // 超高速 drawImage 3D 渲染主循环
+    // =========================================================================
+    let viewW = 0;
+    let viewH = 0;
+    let dpr = 1;
+
+    function resizeCanvas() {
+      const w = window.innerWidth || document.documentElement.clientWidth || 1280;
+      const h = window.innerHeight || document.documentElement.clientHeight || 720;
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      if (w === viewW && h === viewH && canvas.width === Math.floor(w * dpr)) return;
+      viewW = w;
+      viewH = h;
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      rebuildBackgroundCache(viewW, viewH);
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    const renderQueue = [];
+    let prevTime = performance.now();
+    let fpsFrames = 0;
+    let fpsAcc = 0;
+    const fpsEl = document.getElementById('fpsText');
+
+    function animate(now) {
+      resizeCanvas();
+      const dt = Math.min(0.05, (now - prevTime) * 0.001);
+      prevTime = now;
+      const timeSec = now * 0.001;
+
+      fpsFrames++;
+      fpsAcc += dt;
+      if (fpsAcc >= 0.5) {
+        fpsEl.textContent = `${Math.round(fpsFrames / fpsAcc)} FPS`;
+        fpsFrames = 0;
+        fpsAcc = 0;
+      }
+
+      if (!draggingLeft) {
+        if (autoRotate) {
+          velYaw += (-autoSpeed - velYaw) * Math.min(1, dt * 2.4);
+        } else {
+          velYaw *= Math.pow(0.05, dt);
+        }
+        velPitch *= Math.pow(0.05, dt);
+        yaw += velYaw * dt;
+        pitch = Math.max(-0.55, Math.min(1.15, pitch + velPitch * dt));
+      }
+      camDist += (targetDist - camDist) * Math.min(1, dt * 9.5);
+
+      const theme = THEMES[currentThemeIdx];
+      const isPaper = theme.paper;
+
+      // 0. 一次性拷贝离屏背景缓存（极速清屏）
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+      ctx.drawImage(bgCanvas, 0, 0, viewW, viewH);
+
+      const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
+      const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
+      const fov = Math.min(viewW, viewH) * 0.98;
+      const cx = viewW * 0.52 + panX;
+      const cy = viewH * 0.49;
+
+      // 1. 绘制漫天强化 3D 飘雪（发光雪尘 + 立体雪花符号，全贴图加速）
+      if (!isPaper) ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < snowNodes.length; i++) {
+        const s = snowNodes[i];
+        s.y += s.vy * dt;
+        s.x += (s.vx + Math.sin(timeSec * 1.15 + s.phase) * s.swayAmp) * dt;
+        if (s.y < -300) {
+          s.y = 360;
+          s.x = rand(-540, 540);
+          s.z = rand(-480, 480);
+        }
+        if (s.x < -580) s.x = 580;
+        if (s.x > 580) s.x = -580;
+
+        const py = s.y - panY;
+        const rx = s.x * cosY - s.z * sinY;
+        const rz1 = s.x * sinY + s.z * cosY;
+        const depth = py * sinP + rz1 * cosP + camDist;
+        if (depth <= 25) continue;
+
+        const scale = fov / depth;
+        const sx = cx + rx * scale;
+        const sy = cy - (py * cosP - rz1 * sinP) * scale;
+        const twinkle = 0.72 + 0.28 * Math.sin(timeSec * 3.2 + s.phase);
+        ctx.globalAlpha = Math.max(0.18, Math.min(1.0, (460 / depth) * s.alphaBase * twinkle)) * (isPaper ? 0.68 : 0.96);
+
+        if (s.isFlake) {
+          const ratio = (s.size * scale * 0.62) / s.sprite.baseFontPx;
+          const dw = s.sprite.w * ratio;
+          const dh = s.sprite.h * ratio;
+          ctx.drawImage(s.sprite.canvas, sx - dw * 0.5, sy - dh * 0.5, dw, dh);
+        } else {
+          const diam = Math.max(3.2, s.size * scale * 0.92 * glowMultiplier);
+          ctx.drawImage(s.dotSprite, sx - diam * 0.5, sy - diam * 0.5, diam, diam);
+        }
+      }
+
+      // 2. 绘制螺旋流光星尘与底部星环（全贴图 drawImage + 发光叠加）
+      if (!isPaper) ctx.globalCompositeOperation = 'lighter';
+      const gRot = -timeSec * 0.14;
+      const cg = Math.cos(gRot), sg = Math.sin(gRot);
+
+      for (let i = 0; i < sparkleNodes.length; i++) {
+        const sp = sparkleNodes[i];
+        let px = sp.x, py = sp.y, pz = sp.z;
+        if (sp.kind === 'ground') {
+          px = sp.x * cg - sp.z * sg;
+          pz = sp.x * sg + sp.z * cg;
+          py += Math.sin(sp.param * 28 - timeSec * 2.5) * 1.8;
+        }
+        py -= panY;
+        const rx = px * cosY - pz * sinY;
+        const rz1 = px * sinY + pz * cosY;
+        const depth = py * sinP + rz1 * cosP + camDist;
+        if (depth <= 25) continue;
+
+        const scale = fov / depth;
+        const sx = cx + rx * scale;
+        const sy = cy - (py * cosP - rz1 * sinP) * scale;
+
+        let twinkle = 0.62 + 0.38 * Math.sin(timeSec * 3.8 + sp.phase);
+        if (sp.kind === 'ribbon') {
+          twinkle *= 0.65 + 0.55 * Math.sin(sp.param * 20 - timeSec * 4.5);
+        }
+        const diam = Math.max(2.5, sp.size * scale * 0.65 * glowMultiplier);
+        ctx.globalAlpha = Math.min(1, (360 / depth) * twinkle * (isPaper ? 0.45 : 0.75) * glowMultiplier);
+        ctx.drawImage(sp.sprite, sx - diam * 0.5, sy - diam * 0.5, diam, diam);
+      }
+
+      ctx.globalCompositeOperation = 'source-over';
+
+      // 3. 投影并排序 3D 颜文字与树上悬挂贺卡节点
+      renderQueue.length = 0;
+      const hRot = timeSec * 0.9;
+      const ch = Math.cos(hRot), sh = Math.sin(hRot);
+      let hoveringAnyCard = false;
+
+      for (let i = 0; i < treeNodes.length; i++) {
+        const n = treeNodes[i];
+        if (n.type === 'kaomoji') {
+          n.blinkTimer -= dt;
+          if (n.blinkTimer <= 0) {
+            n.blinking = !n.blinking;
+            n.blinkTimer = n.blinking ? rand(0.18, 0.35) : rand(2.2, 6.2);
+          }
+          if (n.bounce > 0) n.bounce = Math.max(0, n.bounce - dt * 2.8);
+        } else if (n.type === 'cardOrnament') {
+          if (n.bounce > 0) n.bounce = Math.max(0, n.bounce - dt * 2.2);
+        }
+
+        let x = n.x, y = n.y, z = n.z;
+        if (n.type === 'kaomoji') {
+          y += Math.sin(timeSec * 2.4 + n.phase) * 2.2 + Math.sin(n.bounce * Math.PI) * 10;
+        } else if (n.type === 'cardOrnament') {
+          y += Math.sin(timeSec * 2.0 + n.phase) * 2.8 + Math.sin(n.bounce * Math.PI) * 14;
+        } else if (n.type === 'starHalo') {
+          x = n.x * ch - n.z * sh;
+          z = n.x * sh + n.z * ch;
+        }
+
+        const py = y - panY;
+        const rx = x * cosY - z * sinY;
+        const rz1 = x * sinY + z * cosY;
+        const depth = py * sinP + rz1 * cosP + camDist;
+        if (depth <= 25) continue;
+
+        const scale = fov / depth;
+        const sx = cx + rx * scale;
+        const sy = cy - (py * cosP - rz1 * sinP) * scale;
+
+        if (n.type === 'kaomoji' && !draggingLeft) {
+          const dxm = sx - mouseX, dym = sy - mouseY;
+          if (dxm * dxm + dym * dym < 2300 && n.bounce < 0.2) {
+            n.bounce = 0.85;
+            n.blinking = true;
+            n.blinkTimer = 0.35;
+          }
+        } else if (n.type === 'cardOrnament') {
+          const hitR = Math.max(22, Math.min(42, 27 * scale * sizeMultiplier));
+          const isHover = !draggingLeft && ((sx - mouseX) ** 2 + (sy - mouseY) ** 2 <= hitR * hitR);
+          if (isHover) hoveringAnyCard = true;
+          const targetHover = isHover ? 1.32 : 1.0;
+          n.hoverScale += (targetHover - n.hoverScale) * Math.min(1, dt * 12);
+        }
+
+        renderQueue.push({ node: n, sx, sy, depth, scale });
+      }
+
+      if (!draggingLeft && !draggingRight) {
+        canvas.style.cursor = hoveringAnyCard ? 'pointer' : 'grab';
+      }
+
+      renderQueue.sort((a, b) => b.depth - a.depth);
+
+      // 4. 绘制所有 3D 颜文字与树上悬挂贺卡（100% 预烘焙纹理 drawImage，丝滑满帧！）
+      const rayAngles = [-0.45, 0, 0.45, Math.PI - 0.45, Math.PI, Math.PI + 0.45];
+
+      for (let i = 0; i < renderQueue.length; i++) {
+        const { node, sx, sy, depth, scale } = renderQueue[i];
+        const depthRatio = Math.max(0.18, Math.min(1.0, (camDist + 165 - depth) / 310 + 0.36));
+        const targetPx = Math.max(8, node.fontSize * scale * sizeMultiplier * 0.72);
+        const sp = node.blinking ? node.spriteB : node.spriteA;
+
+        if (node.type === 'topStar') {
+          const pulse = 1 + 0.08 * Math.sin(timeSec * 4.2);
+          const starSize = targetPx * pulse;
+          const ratio = starSize / sp.baseFontPx;
+          const dw = sp.w * ratio;
+          const dh = sp.h * ratio;
+
+          ctx.globalAlpha = 1;
+          ctx.drawImage(sp.canvas, sx - dw * 0.5, sy - dh * 0.5, dw, dh);
+
+          // 6 条手绘光芒短线（ミ ★ 彡）
+          ctx.strokeStyle = theme.starColor;
+          ctx.lineWidth = Math.max(1.8, starSize * 0.08);
+          ctx.lineCap = 'round';
+          const rInner = starSize * 0.62;
+          const rOuter = starSize * (0.94 + 0.1 * Math.sin(timeSec * 5.0));
+          ctx.beginPath();
+          for (let r = 0; r < 6; r++) {
+            const a = rayAngles[r];
+            const ca = Math.cos(a), sa = Math.sin(a);
+            ctx.moveTo(sx + ca * rInner, sy + sa * rInner);
+            ctx.lineTo(sx + ca * rOuter, sy + sa * rOuter);
+          }
+          ctx.stroke();
+          continue;
+        }
+
+        if (node.type === 'cardOrnament') {
+          // 树上悬挂的 3D 极简手绘贺卡（带轻柔钟摆微晃 + 悬停放大）
+          const swing = Math.sin(timeSec * 2.2 + node.phase) * 0.14;
+          const cardScale = (targetPx * node.hoverScale) / sp.baseFontPx;
+          const dw = sp.w * cardScale;
+          const dh = sp.h * cardScale;
+
+          ctx.save();
+          ctx.globalAlpha = isPaper
+            ? (0.40 + depthRatio * 0.60)
+            : (0.35 + depthRatio * 0.65);
+          ctx.translate(sx, sy);
+          ctx.rotate(swing);
+          ctx.drawImage(sp.canvas, -dw * 0.5, -dh * 0.5, dw, dh);
+          ctx.restore();
+          continue;
+        }
+
+        const ratio = targetPx / sp.baseFontPx;
+        const dw = sp.w * ratio;
+        const dh = sp.h * ratio;
+
+        ctx.globalAlpha = (node.type === 'trunkText')
+          ? 0.96
+          : (isPaper ? (0.28 + depthRatio * 0.72) : (0.22 + depthRatio * 0.78));
+
+        ctx.drawImage(sp.canvas, sx - dw * 0.5, sy - dh * 0.5, dw, dh);
+      }
+
+      // 5. 渲染 4 套风格专属点击粒子特效（支持物理重力/浮力、阻尼、摇曳、旋转）
+      for (let i = burstEffects.length - 1; i >= 0; i--) {
+        const b = burstEffects[i];
+        b.life -= dt * b.decay;
+        if (b.life <= 0) {
+          burstEffects.splice(i, 1);
+          continue;
+        }
+        const damp = Math.pow(b.drag, dt * 60);
+        b.vx *= damp;
+        b.vy *= damp;
+        b.vy += b.gravity * dt;
+        const swayX = b.swayAmp ? Math.sin(timeSec * 5.2 + b.phase) * b.swayAmp * dt : 0;
+        b.x += b.vx * dt + swayX;
+        b.y += b.vy * dt;
+        b.rot += b.vrot * dt;
+
+        const scalePop = (b.life > 0.85) ? (1.0 - (b.life - 0.85) * 3.0) : (0.65 + 0.35 * b.life);
+        const ratio = (b.size * Math.max(0.25, scalePop)) / b.sprite.baseFontPx;
+        const dw = b.sprite.w * ratio;
+        const dh = b.sprite.h * ratio;
+
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, b.life * 1.25));
+        ctx.translate(b.x, b.y);
+        if (b.rot !== 0) ctx.rotate(b.rot);
+        ctx.drawImage(b.sprite.canvas, -dw * 0.5, -dh * 0.5, dw, dh);
+        ctx.restore();
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>

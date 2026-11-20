@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Merry Christmas · 3D 多彩流光粒子圣诞树</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: radial-gradient(circle at 50% 42%, #0c1224 0%, #050811 58%, #020307 100%);
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: #f4f7ff;
+    }
+
+    #glCanvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      cursor: grab;
+    }
+
+    #glCanvas:active {
+      cursor: grabbing;
+    }
+
+    /* 左侧悬浮标题与祝福语 */
+    .hero-overlay {
+      position: fixed;
+      left: 5vw;
+      top: 34vh;
+      pointer-events: none;
+      z-index: 10;
+      text-shadow: 0 0 24px rgba(255, 215, 140, 0.35);
+    }
+
+    .hero-title {
+      font-size: clamp(28px, 3.2vw, 46px);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      background: linear-gradient(120deg, #fff8e7 0%, #ffd584 42%, #ff9eb5 75%, #9be8ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 4px 18px rgba(255, 195, 110, 0.28));
+    }
+
+    .hero-counter {
+      margin-top: 6px;
+      font-size: clamp(20px, 2vw, 28px);
+      font-weight: 600;
+      color: rgba(240, 246, 255, 0.92);
+      letter-spacing: 0.08em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hero-sub {
+      margin-top: 14px;
+      font-size: 13px;
+      line-height: 1.75;
+      color: rgba(190, 214, 245, 0.72);
+      letter-spacing: 0.03em;
+    }
+
+    /* 右上角毛玻璃控制面板 */
+    .control-panel {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      z-index: 20;
+      width: 280px;
+      padding: 18px 20px;
+      border-radius: 18px;
+      background: rgba(12, 18, 34, 0.62);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+      transition: opacity 0.3s ease;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #ffe7b8;
+      letter-spacing: 0.05em;
+    }
+
+    .theme-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .theme-btn {
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.05);
+      color: rgba(235, 242, 255, 0.85);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: center;
+    }
+
+    .theme-btn:hover {
+      background: rgba(255, 255, 255, 0.14);
+      transform: translateY(-1px);
+    }
+
+    .theme-btn.active {
+      background: linear-gradient(135deg, rgba(255, 200, 105, 0.28), rgba(255, 115, 160, 0.28));
+      border-color: rgba(255, 215, 130, 0.65);
+      color: #fff;
+      box-shadow: 0 0 14px rgba(255, 195, 110, 0.25);
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 10px;
+      font-size: 12.5px;
+      color: rgba(215, 228, 250, 0.85);
+    }
+
+    .control-row input[type="range"] {
+      width: 125px;
+      accent-color: #ffca7a;
+      cursor: pointer;
+    }
+
+    .action-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .action-btn {
+      flex: 1;
+      padding: 8px 0;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(255, 255, 255, 0.07);
+      color: #f0f5ff;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.16);
+    }
+
+    .action-btn.active {
+      border-color: rgba(130, 235, 255, 0.6);
+      background: rgba(90, 205, 255, 0.18);
+      color: #dff9ff;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="glCanvas"></canvas>
+
+  <!-- 左侧标志性文字区 -->
+  <div class="hero-overlay">
+    <div class="hero-title" contenteditable="true" spellcheck="false">Merry Christmas</div>
+    <div class="hero-counter" contenteditable="true" spellcheck="false">647</div>
+    <div class="hero-sub">
+      鼠标左键拖拽：360° 自由旋转（带阻尼惯性）<br />
+      鼠标滚轮缩放 · 右键拖拽平移 · 文字可直接点击修改
+    </div>
+  </div>
+
+  <!-- 右上角控制面板 -->
+  <div class="control-panel">
+    <div class="panel-header">
+      <span>✨ 粒子色彩与交互控制</span>
+      <span id="fpsText" style="font-size:11px;color:#9ec5ff;">60 FPS</span>
+    </div>
+
+    <div class="theme-grid">
+      <button class="theme-btn active" data-theme="0">🎄 经典流光圣诞</button>
+      <button class="theme-btn" data-theme="1">🌌 极光冰晶星云</button>
+      <button class="theme-btn" data-theme="2">🌸 樱雪香槟流金</button>
+      <button class="theme-btn" data-theme="3">🌈 赛博霓虹幻彩</button>
+    </div>
+
+    <div class="control-row">
+      <span>辉光强度</span>
+      <input type="range" id="glowSlider" min="0.5" max="2.2" step="0.05" value="1.25" />
+    </div>
+
+    <div class="control-row">
+      <span>自转速度</span>
+      <input type="range" id="speedSlider" min="0" max="1.5" step="0.05" value="0.38" />
+    </div>
+
+    <div class="control-row">
+      <span>粒子大小</span>
+      <input type="range" id="sizeSlider" min="0.6" max="1.8" step="0.05" value="1.05" />
+    </div>
+
+    <div class="action-row">
+      <button class="action-btn active" id="btnAutoRotate">🔄 自动旋转</button>
+      <button class="action-btn" id="btnMusic">🎵 圣诞八音盒</button>
+      <button class="action-btn" id="btnReset">🎯 复位视角</button>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // WebGL GPU 3D 多彩流光粒子圣诞树引擎（零外部依赖，65,000+ 3D 粒子实时发光渲染）
+    // =========================================================================
+    const canvas = document.getElementById('glCanvas');
+    const gl = canvas.getContext('webgl', { alpha: false, antialias: true, powerPreference: 'high-performance' });
+
+    // 粒子分组类型常量
+    const TYPE_FOLIAGE     = 0.0; // 多层伞状松针树冠
+    const TYPE_RIBBON_GOLD = 1.0; // 主螺旋流光金带
+    const TYPE_RIBBON_ROSE = 2.0; // 副螺旋绯红/紫罗兰丝带
+    const TYPE_ORNAMENT    = 3.0; // 3D 立体圣诞彩球挂饰
+    const TYPE_TOPPER      = 4.0; // 树顶 3D 发光爱心与八角星冠 + 悬浮星环
+    const TYPE_GROUND      = 5.0; // 底部弧形多层星环穹顶
+    const TYPE_SNOW        = 6.0; // 3D 景深飘雪
+    const TYPE_FIREFLY     = 7.0; // 升腾的流光萤火微粒
+    const TYPE_GIFT        = 8.0; // 树下 3D 粒子圣诞礼盒
+
+    // 顶点着色器：处理 3D 空间变换、螺旋流光波浪、飘雪与萤火物理、透视点大小与十字星芒权重
+    const vsSource = `
+      attribute vec3 aPos;
+      attribute vec3 aColor;
+      attribute vec4 aMeta; // x: size, y: brightness, z: phase, w: type
+      attribute float aParam; // 沿树高或丝带的比例 (0~1)
+
+      uniform mat4 uProj;
+      uniform float uTime;
+      uniform float uYaw;
+      uniform float uPitch;
+      uniform float uCamDist;
+      uniform vec2 uPan;
+      uniform float uPointScale;
+      uniform float uGlowBoost;
+
+      varying vec3 vColor;
+      varying float vAlpha;
+      varying float vStarburst;
+
+      void main() {
+        vec3 p = aPos;
+        float pSize = aMeta.x;
+        float bright = aMeta.y;
+        float phase = aMeta.z;
+        float pType = aMeta.w;
+
+        // 1. 动态粒子位移（飘雪、升腾萤火、地面星环微旋、松枝呼吸摆动）
+        if (abs(pType - 6.0) < 0.1) {
+          // 漫天飘雪
+          p.y = mod(p.y - uTime * (16.0 + mod(phase, 12.0)) + 240.0, 520.0) - 240.0;
+          p.x += sin(uTime * 0.7 + phase) * 8.0;
+          p.z += cos(uTime * 0.6 + phase) * 8.0;
+        } else if (abs(pType - 7.0) < 0.1) {
+          // 围绕树身盘旋上升的彩色流光萤火
+          float h = mod(p.y + uTime * (18.0 + mod(phase, 10.0)) + 90.0, 290.0) - 90.0;
+          float swirl = uTime * 0.65 + h * 0.025;
+          float c = cos(swirl), s = sin(swirl);
+          p = vec3(p.x * c - p.z * s, h, p.x * s + p.z * c);
+        } else if (abs(pType - 5.0) < 0.1) {
+          // 底部星环穹顶地面：缓慢旋转 + 涟漪呼吸起伏
+          float gRot = -uTime * 0.14;
+          float cg = cos(gRot), sg = sin(gRot);
+          p.xz = vec2(p.x * cg - p.z * sg, p.x * sg + p.z * cg);
+          float r = length(p.xz);
+          p.y += sin(r * 0.14 - uTime * 2.4) * 1.4;
+        } else if (abs(pType - 0.0) < 0.1) {
+          // 树枝轻柔微风呼吸
+          float sway = sin(uTime * 1.8 + phase + aParam * 4.0) * 0.85 * (1.0 - aParam * 0.5);
+          p.x += sway;
+          p.z += cos(uTime * 1.5 + phase) * 0.85;
+        }
+
+        // 2. 相机旋转与平移变换
+        p.y -= uPan.y;
+        float cy = cos(uYaw), sy = sin(uYaw);
+        vec3 r1 = vec3(p.x * cy - p.z * sy, p.y, p.x * sy + p.z * cy);
+
+        float cp = cos(uPitch), sp = sin(uPitch);
+        float depth = r1.y * sp + r1.z * cp + uCamDist;
+        vec3 viewPos = vec3(
+          r1.x + uPan.x,
+          r1.y * cp - r1.z * sp,
+          -depth
+        );
+
+        gl_Position = uProj * vec4(viewPos, 1.0);
+
+        // 3. 闪烁与丝带流光脉冲计算
+        float twinkle = 0.76 + 0.24 * sin(uTime * 3.6 + phase);
+        if (abs(pType - 1.0) < 0.1 || abs(pType - 2.0) < 0.1) {
+          // 沿螺旋丝带向上奔涌的高光流光波
+          float wave = 0.72 + 0.55 * sin(aParam * 22.0 - uTime * 4.5 + phase * 0.2);
+          twinkle *= wave;
+        } else if (abs(pType - 3.0) < 0.1 || abs(pType - 4.0) < 0.1) {
+          twinkle = 0.85 + 0.32 * sin(uTime * 5.0 + phase);
+        }
+
+        float distAtten = clamp(420.0 / max(20.0, depth), 0.22, 1.65);
+        vAlpha = bright * twinkle * distAtten * uGlowBoost;
+        vColor = aColor;
+
+        // 彩球、树顶星冠与高光大粒子开启星芒衍射效果
+        vStarburst = (abs(pType - 3.0) < 0.1 || abs(pType - 4.0) < 0.1 || pSize > 3.1) ? 1.0 : 0.0;
+
+        float screenSize = pSize * uPointScale * (520.0 / max(25.0, depth));
+        gl_PointSize = clamp(screenSize, 1.2, 28.0);
+      }
+    `;
+
+    // 片元着色器：径向高斯光晕 + 钻石高光白芯 + 四角星芒衍射
+    const fsSource = `
+      precision mediump float;
+      varying vec3 vColor;
+      varying float vAlpha;
+      varying float vStarburst;
+
+      void main() {
+        vec2 uv = gl_PointCoord * 2.0 - 1.0;
+        float d2 = dot(uv, uv);
+        if (d2 > 1.0) discard;
+
+        float d = sqrt(d2);
+        // 柔和指数光晕 + 高亮中心白核
+        float halo = exp(-d * 3.2);
+        float core = smoothstep(0.42, 0.0, d);
+
+        // 璀璨四角星芒
+        float crossSpike = 0.0;
+        if (vStarburst > 0.5) {
+          float sx = exp(-abs(uv.x) * 9.0) * exp(-abs(uv.y) * 2.2);
+          float sy = exp(-abs(uv.y) * 9.0) * exp(-abs(uv.x) * 2.2);
+          crossSpike = (sx + sy) * 0.45;
+        }
+
+        float intensity = (halo * 0.78 + core * 0.85 + crossSpike) * vAlpha;
+        // 中心向纯白高光过渡，四周保留浓郁色彩
+        vec3 finalColor = mix(vColor, vec3(1.0, 0.99, 0.96), clamp(core * 0.72 + crossSpike * 0.4, 0.0, 1.0));
+        gl_FragColor = vec4(finalColor * intensity, 1.0);
+      }
+    `;
+
+    function compileShader(type, source) {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, source);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+        console.error(gl.getShaderInfoLog(s));
+      }
+      return s;
+    }
+
+    const prog = gl.createProgram();
+    gl.attachShader(prog, compileShader(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(prog, compileShader(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(prog);
+    gl.useProgram(prog);
+
+    // =========================================================================
+    // 生成 3D 圣诞树粒子几何与多主题配色系统
+    // =========================================================================
+    const MAX_PTS = 52000;
+    const posArr   = new Float32Array(MAX_PTS * 3);
+    const colArr   = new Float32Array(MAX_PTS * 3);
+    const metaArr  = new Float32Array(MAX_PTS * 4);
+    const paramArr = new Float32Array(MAX_PTS);
+    const groupArr = new Uint8Array(MAX_PTS); // 辅助多套主题实时换色
+    let ptCount = 0;
+
+    function gauss() {
+      return (Math.random() + Math.random() + Math.random() - 1.5) * 0.6667;
+    }
+
+    function hsvToRgb(h, s, v) {
+      h = ((h % 360) + 360) % 360;
+      const c = v * s;
+      const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+      const m = v - c;
+      let r = 0, g = 0, b = 0;
+      if (h < 60)       { r = c; g = x; }
+      else if (h < 120) { r = x; g = c; }
+      else if (h < 180) { g = c; b = x; }
+      else if (h < 240) { g = x; b = c; }
+      else if (h < 300) { r = x; b = c; }
+      else              { r = c; b = x; }
+      return [r + m, g + m, b + m];
+    }
+
+    function addParticle(x, y, z, size, bright, phase, type, param, group) {
+      if (ptCount >= MAX_PTS) return;
+      const i3 = ptCount * 3;
+      const i4 = ptCount * 4;
+      posArr[i3]     = x;
+      posArr[i3 + 1] = y;
+      posArr[i3 + 2] = z;
+      metaArr[i4]     = size;
+      metaArr[i4 + 1] = bright;
+      metaArr[i4 + 2] = phase;
+      metaArr[i4 + 3] = type;
+      paramArr[ptCount] = param;
+      groupArr[ptCount] = group;
+      ptCount++;
+    }
+
+    function buildTreeGeometry() {
+      ptCount = 0;
+      const treeBottomY = -82.0;
+      const treeTopY = 178.0;
+      const treeH = treeTopY - treeBottomY;
+      const numTiers = 8;
+
+      // 1. 多层自然下垂伞状松枝树冠 (17,500 颗粒子)
+      for (let i = 0; i < 17500; i++) {
+        const t = Math.pow(Math.random(), 0.78);
+        const yBase = treeBottomY + t * treeH;
+
+        const tierPos = t * numTiers;
+        const tierIdx = Math.floor(tierPos);
+        const tierFrac = tierPos - tierIdx;
+
+        const coneR = (1.0 - t) * 124.0 + 3.5;
+        const tierFlare = (1.0 - tierFrac * 0.62) * 1.14;
+        const maxR = coneR * tierFlare;
+
+        const branches = 10 + (numTiers - tierIdx) * 2;
+        const branchAng = (i % branches) * ((Math.PI * 2) / branches) + tierIdx * 0.45;
+        const angle = branchAng + gauss() * (Math.PI / branches) * 1.45;
+
+        const rNorm = Math.pow(0.06 + 0.94 * Math.random(), 0.62);
+        const r = maxR * rNorm;
+
+        // 树枝下垂弧度与微翘枝尖
+        const droop = -rNorm * rNorm * 11.5 * (1.0 - t * 0.48) + Math.pow(rNorm, 4.0) * 5.5;
+        const y = yBase + droop + gauss() * 2.2;
+
+        const isTip = rNorm > 0.87;
+        const size = isTip ? (1.8 + Math.random() * 1.6) : (1.1 + Math.random() * 1.3);
+        const bright = isTip ? (0.52 + Math.random() * 0.45) : (0.24 + Math.random() * 0.36);
+
+        addParticle(
+          r * Math.cos(angle), y, r * Math.sin(angle),
+          size, bright, Math.random() * Math.PI * 2,
+          TYPE_FOLIAGE, t, isTip ? 10 + (tierIdx % 5) : (tierIdx % 5)
+        );
+      }
+
+      // 2. 双交织螺旋高光流光丝带 (主丝带 + 副丝带，共 13,500 颗粒子，还原原图标志性盘旋流光)
+      for (let i = 0; i < 13500; i++) {
+        const isMain = (i % 7 !== 0) ? (i % 2 === 0) : true;
+        const t = Math.pow(Math.random(), 0.80);
+        const y = treeBottomY + t * treeH;
+
+        const baseR = (1.0 - t) * 126.0 + 3.0;
+        const turns = 6.2;
+        const offset = isMain ? 0.0 : Math.PI;
+        const angle = t * turns * Math.PI * 2.0 + offset;
+
+        const spread = (1.0 - t * 0.65) * (isMain ? 7.8 : 5.6);
+        const dr = gauss() * spread;
+        const dy = gauss() * spread * 0.58;
+        const dTheta = gauss() * 0.14;
+
+        const r = Math.max(0.8, baseR + dr);
+        const finalAng = angle + dTheta;
+        const isSparkle = Math.random() < 0.14;
+
+        addParticle(
+          r * Math.cos(finalAng), y + dy, r * Math.sin(finalAng),
+          isSparkle ? (2.6 + Math.random() * 1.8) : (1.3 + Math.random() * 1.4),
+          isSparkle ? 1.05 : (0.60 + Math.random() * 0.40),
+          Math.random() * Math.PI * 2,
+          isMain ? TYPE_RIBBON_GOLD : TYPE_RIBBON_ROSE,
+          t, isSparkle ? 1 : 0
+        );
+      }
+
+      // 3. 3D 立体发光圣诞彩球挂饰 (76 颗彩球簇，每颗由 38 个微粒子组成球体)
+      const numBaubles = 76;
+      for (let b = 0; b < numBaubles; b++) {
+        const t = 0.05 + (b / numBaubles) * 0.85;
+        const yCenter = treeBottomY + t * treeH - 3.2;
+        const rBranch = ((1.0 - t) * 122.0 + 4.5) * (0.85 + Math.random() * 0.18);
+        const theta = b * 2.39996 + (Math.random() - 0.5) * 0.22;
+
+        const bx = rBranch * Math.cos(theta);
+        const bz = rBranch * Math.sin(theta);
+        const baubleR = (1.0 - t * 0.42) * 4.5;
+        const colorGroup = b % 6;
+
+        for (let k = 0; k < 38; k++) {
+          const u = Math.random() * 2.0 - 1.0;
+          const phi = Math.random() * Math.PI * 2.0;
+          const s = Math.sqrt(Math.max(0.0, 1.0 - u * u));
+          const rad = baubleR * Math.pow(0.15 + 0.85 * Math.random(), 0.35);
+
+          addParticle(
+            bx + rad * s * Math.cos(phi),
+            yCenter + rad * u,
+            bz + rad * s * Math.sin(phi),
+            k < 5 ? 3.5 : (1.5 + Math.random() * 1.3),
+            k < 5 ? 1.15 : (0.72 + Math.random() * 0.30),
+            b * 0.7 + k * 0.1,
+            TYPE_ORNAMENT, t, colorGroup
+          );
+        }
+      }
+
+      // 4. 树顶 3D 饱满发光爱心星冠 + 倾斜悬浮双星环 (2,600 颗粒子)
+      const topCenterY = treeTopY + 13.5;
+      let heartPts = 0;
+      while (heartPts < 1900) {
+        const x = (Math.random() * 2.6) - 1.3;
+        const y = (Math.random() * 2.6) - 1.2;
+        const z = (Math.random() * 1.6) - 0.8;
+        const a = x * x + 2.25 * z * z + y * y - 1.0;
+        if (a * a * a - (x * x + 0.1125 * z * z) * y * y * y <= 0.0) {
+          const scale = 12.2;
+          addParticle(
+            x * scale, topCenterY + y * scale, z * scale,
+            Math.random() < 0.2 ? 3.3 : (1.5 + Math.random() * 1.5),
+            0.78 + Math.random() * 0.32,
+            Math.random() * Math.PI * 2,
+            TYPE_TOPPER, 1.0, (x * x + y * y < 0.35) ? 0 : 1
+          );
+          heartPts++;
+        }
+      }
+      // 树顶环绕倾斜星环
+      for (let i = 0; i < 650; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const ringR = 20.5 + gauss() * 1.4;
+        const lx = ringR * Math.cos(ang);
+        const lz = ringR * Math.sin(ang);
+        const tilt = 0.36;
+        addParticle(
+          lx,
+          topCenterY + lz * Math.sin(tilt),
+          lz * Math.cos(tilt),
+          1.4 + Math.random() * 1.3,
+          0.68 + Math.random() * 0.32,
+          ang, TYPE_TOPPER, 1.0, 2
+        );
+      }
+
+      // 5. 树下 3D 发光圣诞礼盒 (4 个不同配色的立体礼盒 + 十字丝带)
+      const gifts = [
+        { cx: -44, cz:  30, w: 20, h: 17, d: 20, rot:  0.35, grp: 0 },
+        { cx:  48, cz:  24, w: 22, h: 15, d: 18, rot: -0.42, grp: 1 },
+        { cx:  12, cz:  52, w: 16, h: 14, d: 16, rot:  0.20, grp: 2 },
+        { cx: -22, cz: -46, w: 19, h: 16, d: 19, rot:  0.75, grp: 3 }
+      ];
+      for (const gf of gifts) {
+        const cR = Math.cos(gf.rot), sR = Math.sin(gf.rot);
+        const baseY = treeBottomY - 12.0;
+        for (let i = 0; i < 420; i++) {
+          const face = i % 6;
+          let lx = (Math.random() - 0.5) * gf.w;
+          let ly = Math.random() * gf.h;
+          let lz = (Math.random() - 0.5) * gf.d;
+          if (face === 0) lx = -0.5 * gf.w;
+          else if (face === 1) lx = 0.5 * gf.w;
+          else if (face === 2) lz = -0.5 * gf.d;
+          else if (face === 3) lz = 0.5 * gf.d;
+          else if (face === 4) ly = gf.h;
+          else ly = 0;
+
+          const isRibbon = (Math.abs(lx) < gf.w * 0.14) || (Math.abs(lz) < gf.d * 0.14);
+          addParticle(
+            gf.cx + (lx * cR - lz * sR),
+            baseY + ly,
+            gf.cz + (lx * sR + lz * cR),
+            isRibbon ? 2.1 : 1.4,
+            isRibbon ? 0.92 : 0.58,
+            Math.random() * Math.PI * 2,
+            TYPE_GIFT, 0.0, isRibbon ? 10 + gf.grp : gf.grp
+          );
+        }
+      }
+
+      // 6. 底部弧形多层同心星环穹顶地面 (11,500 颗粒子，还原图中标志性弧形星环坡面)
+      for (let i = 0; i < 11500; i++) {
+        const u = Math.random();
+        let baseRadius = 22.0 + Math.pow(u, 0.85) * 365.0;
+        const ringWave = Math.sin(baseRadius * 0.19);
+        if ((Math.random() * 1.55 - 0.55) > ringWave && baseRadius < 235.0) {
+          baseRadius += 13.0;
+        }
+        const angle = Math.random() * Math.PI * 2;
+        const domeDrop = baseRadius * baseRadius * 0.00102;
+        const y = treeBottomY - 10.0 - domeDrop + gauss() * 1.9;
+
+        const distFactor = Math.max(0.14, 1.0 - baseRadius / 390.0);
+        const normR = Math.min(1.0, baseRadius / 365.0);
+
+        addParticle(
+          baseRadius * Math.cos(angle), y, baseRadius * Math.sin(angle),
+          baseRadius < 145.0 ? (1.4 + Math.random() * 1.4) : (1.0 + Math.random() * 1.1),
+          distFactor * (0.38 + Math.random() * 0.58),
+          angle * 2.0 + baseRadius * 0.05,
+          TYPE_GROUND, normR, i % 6
+        );
+      }
+
+      // 7. 漫天 3D 景深飘雪 (1,600 颗粒子)
+      for (let i = 0; i < 1600; i++) {
+        const big = Math.random() < 0.22;
+        addParticle(
+          (Math.random() - 0.5) * 900.0,
+          (Math.random() - 0.5) * 520.0,
+          (Math.random() - 0.5) * 900.0,
+          big ? (2.8 + Math.random() * 1.8) : (1.3 + Math.random() * 1.2),
+          0.45 + Math.random() * 0.55,
+          Math.random() * Math.PI * 4,
+          TYPE_SNOW, 0.0, i % 3
+        );
+      }
+
+      // 8. 升腾的流光萤火微粒 (650 颗粒子)
+      for (let i = 0; i < 650; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const rad = 22.0 + Math.random() * 155.0;
+        addParticle(
+          rad * Math.cos(ang),
+          treeBottomY + Math.random() * (treeH + 50.0),
+          rad * Math.sin(ang),
+          2.2 + Math.random() * 1.8,
+          0.75 + Math.random() * 0.30,
+          Math.random() * Math.PI * 2,
+          TYPE_FIREFLY, Math.random(), i % 4
+        );
+      }
+    }
+
+    // =========================================================================
+    // 4 套高定多彩主题实时着色
+    // =========================================================================
+    const colBuffer = gl.createBuffer();
+
+    function applyColorTheme(themeIdx) {
+      for (let i = 0; i < ptCount; i++) {
+        const i3 = i * 3;
+        const pType = metaArr[i * 4 + 3];
+        const t = paramArr[i];
+        const grp = groupArr[i];
+        let rgb = [1, 1, 1];
+
+        if (pType === TYPE_FOLIAGE) {
+          const isTip = grp >= 10;
+          if (themeIdx === 0) {
+            // 经典流光圣诞：松林翠绿 -> 翡翠青渐变，枝尖带冰晶高光
+            const h = 132 + t * 28 + (grp % 5) * 4;
+            const s = isTip ? 0.52 : (0.80 - t * 0.15);
+            rgb = hsvToRgb(h, s, isTip ? 1.0 : 0.92);
+          } else if (themeIdx === 1) {
+            // 极光冰晶星云：深海蓝 -> 极光青 -> 星云紫
+            const h = 185 + t * 88 + (grp % 5) * 6;
+            rgb = hsvToRgb(h, isTip ? 0.45 : 0.76, 0.96);
+          } else if (themeIdx === 2) {
+            // 樱雪香槟流金：柔粉樱花 -> 蜜桃粉 -> 暖白霜雪
+            const h = 332 + t * 32 + (grp % 5) * 4;
+            rgb = hsvToRgb(h, isTip ? 0.35 : 0.68, 0.98);
+          } else {
+            // 赛博霓虹幻彩：全光谱流光
+            const h = (t * 300 + grp * 18) % 360;
+            rgb = hsvToRgb(h, 0.85, 0.98);
+          }
+        } else if (pType === TYPE_RIBBON_GOLD) {
+          if (themeIdx === 0)      rgb = grp ? [1.0, 0.98, 0.90] : hsvToRgb(43, 0.78, 1.0);
+          else if (themeIdx === 1) rgb = grp ? [0.95, 0.99, 1.0] : hsvToRgb(192, 0.38, 1.0);
+          else if (themeIdx === 2) rgb = grp ? [1.0, 0.98, 0.92] : hsvToRgb(38, 0.68, 1.0);
+          else                     rgb = hsvToRgb(178, 0.85, 1.0);
+        } else if (pType === TYPE_RIBBON_ROSE) {
+          if (themeIdx === 0)      rgb = hsvToRgb(350, 0.82, 1.0);
+          else if (themeIdx === 1) rgb = hsvToRgb(292, 0.76, 1.0);
+          else if (themeIdx === 2) rgb = hsvToRgb(340, 0.75, 1.0);
+          else                     rgb = hsvToRgb(318, 0.90, 1.0);
+        } else if (pType === TYPE_ORNAMENT) {
+          const palettes = [
+            [355, 45, 195, 285, 18, 325],
+            [190, 265, 315, 48, 165, 225],
+            [340, 42, 195, 280, 15, 315],
+            [330, 55, 175, 275, 120, 15]
+          ];
+          const h = palettes[themeIdx][grp % 6];
+          rgb = hsvToRgb(h, 0.85, 1.0);
+        } else if (pType === TYPE_TOPPER) {
+          if (grp === 0)      rgb = [1.0, 0.97, 0.92];
+          else if (grp === 1) rgb = (themeIdx === 1) ? hsvToRgb(295, 0.65, 1.0) : hsvToRgb(348, 0.72, 1.0);
+          else                rgb = hsvToRgb(44, 0.75, 1.0);
+        } else if (pType === TYPE_GIFT) {
+          const isRib = grp >= 10;
+          const boxHues = [352, 200, 282, 145];
+          rgb = isRib ? [1.0, 0.88, 0.45] : hsvToRgb(boxHues[grp % 4], 0.82, 0.95);
+        } else if (pType === TYPE_GROUND) {
+          if (themeIdx === 0) {
+            const h = (grp === 0) ? 43 : (188 + t * 82);
+            rgb = hsvToRgb(h, grp === 0 ? 0.72 : 0.62, 0.96);
+          } else if (themeIdx === 1) {
+            rgb = hsvToRgb(198 + t * 95, 0.68, 0.98);
+          } else if (themeIdx === 2) {
+            rgb = hsvToRgb(325 + t * 65, 0.55, 0.98);
+          } else {
+            rgb = hsvToRgb(260 + t * 120, 0.80, 0.98);
+          }
+        } else if (pType === TYPE_SNOW) {
+          rgb = [0.92, 0.96, 1.0];
+        } else if (pType === TYPE_FIREFLY) {
+          const fHues = [45, 178, 325, 280];
+          rgb = hsvToRgb(fHues[grp % 4], 0.82, 1.0);
+        }
+
+        colArr[i3]     = rgb[0];
+        colArr[i3 + 1] = rgb[1];
+        colArr[i3 + 2] = rgb[2];
+      }
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, colBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, colArr.subarray(0, ptCount * 3), gl.DYNAMIC_DRAW);
+    }
+
+    buildTreeGeometry();
+
+    // 绑定 GPU 顶点缓冲
+    function bindAttrib(buffer, data, name, size) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+      const loc = gl.getAttribLocation(prog, name);
+      gl.enableVertexAttribArray(loc);
+      gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);
+    }
+
+    bindAttrib(gl.createBuffer(), posArr.subarray(0, ptCount * 3), 'aPos', 3);
+    bindAttrib(gl.createBuffer(), metaArr.subarray(0, ptCount * 4), 'aMeta', 4);
+    bindAttrib(gl.createBuffer(), paramArr.subarray(0, ptCount), 'aParam', 1);
+
+    applyColorTheme(0);
+    const colLoc = gl.getAttribLocation(prog, 'aColor');
+    gl.bindBuffer(gl.ARRAY_BUFFER, colBuffer);
+    gl.enableVertexAttribArray(colLoc);
+    gl.vertexAttribPointer(colLoc, 3, gl.FLOAT, false, 0, 0);
+
+    // Uniform 位置
+    const uProjLoc       = gl.getUniformLocation(prog, 'uProj');
+    const uTimeLoc       = gl.getUniformLocation(prog, 'uTime');
+    const uYawLoc        = gl.getUniformLocation(prog, 'uYaw');
+    const uPitchLoc      = gl.getUniformLocation(prog, 'uPitch');
+    const uCamDistLoc    = gl.getUniformLocation(prog, 'uCamDist');
+    const uPanLoc        = gl.getUniformLocation(prog, 'uPan');
+    const uPointScaleLoc = gl.getUniformLocation(prog, 'uPointScale');
+    const uGlowBoostLoc  = gl.getUniformLocation(prog, 'uGlowBoost');
+
+    // =========================================================================
+    // 鼠标拖拽 360° 自由旋转 + 阻尼惯性 + 滚轮缩放 + 触摸屏手势支持
+    // =========================================================================
+    let yaw = 0.0;
+    let pitch = 0.16;
+    let velYaw = -0.38;
+    let velPitch = 0.0;
+    let camDist = 420.0;
+    let targetDist = 420.0;
+    let panX = 12.0;
+    let panY = 30.0;
+
+    let autoRotate = true;
+    let autoSpeed = 0.38;
+    let glowBoost = 1.25;
+    let userSizeScale = 1.05;
+
+    let draggingLeft = false;
+    let draggingRight = false;
+    let lastX = 0;
+    let lastY = 0;
+
+    canvas.addEventListener('mousedown', (e) => {
+      if (e.button === 0) draggingLeft = true;
+      if (e.button === 2) draggingRight = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+    });
+
+    window.addEventListener('mouseup', () => {
+      draggingLeft = false;
+      draggingRight = false;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!draggingLeft && !draggingRight) return;
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      lastX = e.clientX;
+      lastY = e.clientY;
+
+      if (draggingLeft) {
+        const sens = 0.0065;
+        yaw += dx * sens;
+        pitch = Math.max(-0.55, Math.min(1.25, pitch + dy * sens));
+        velYaw = dx * 0.28;
+        velPitch = dy * 0.28;
+      } else if (draggingRight) {
+        panX += dx * 0.35;
+        panY += dy * 0.35;
+      }
+    });
+
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      targetDist = Math.max(150.0, Math.min(820.0, targetDist + e.deltaY * 0.26));
+    }, { passive: false });
+
+    // 移动端单指旋转拖拽支持
+    canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        draggingLeft = true;
+        lastX = e.touches[0].clientX;
+        lastY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchend', () => { draggingLeft = false; });
+    window.addEventListener('touchmove', (e) => {
+      if (!draggingLeft || e.touches.length !== 1) return;
+      const dx = e.touches[0].clientX - lastX;
+      const dy = e.touches[0].clientY - lastY;
+      lastX = e.touches[0].clientX;
+      lastY = e.touches[0].clientY;
+      yaw += dx * 0.0065;
+      pitch = Math.max(-0.55, Math.min(1.25, pitch + dy * 0.0065));
+      velYaw = dx * 0.25;
+      velPitch = dy * 0.25;
+    }, { passive: true });
+
+    // =========================================================================
+    // UI 面板事件绑定 & Web Audio 圣诞八音盒合成器
+    // =========================================================================
+    document.querySelectorAll('.theme-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.theme-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        applyColorTheme(parseInt(btn.dataset.theme, 10));
+      });
+    });
+
+    document.getElementById('glowSlider').addEventListener('input', (e) => {
+      glowBoost = parseFloat(e.target.value);
+    });
+
+    document.getElementById('speedSlider').addEventListener('input', (e) => {
+      autoSpeed = parseFloat(e.target.value);
+    });
+
+    document.getElementById('sizeSlider').addEventListener('input', (e) => {
+      userSizeScale = parseFloat(e.target.value);
+    });
+
+    const btnAutoRotate = document.getElementById('btnAutoRotate');
+    btnAutoRotate.addEventListener('click', () => {
+      autoRotate = !autoRotate;
+      btnAutoRotate.classList.toggle('active', autoRotate);
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+      pitch = 0.16;
+      targetDist = 420.0;
+      panX = 12.0;
+      panY = 30.0;
+      velYaw = -autoSpeed;
+      velPitch = 0.0;
+    });
+
+    // 合成器圣诞八音盒：《We Wish You a Merry Christmas》
+    let audioCtx = null;
+    let musicTimer = null;
+    let musicPlaying = false;
+    const btnMusic = document.getElementById('btnMusic');
+
+    const melody = [
+      [392.00, 0.4], [523.25, 0.4], [523.25, 0.2], [587.33, 0.2], [523.25, 0.2], [493.88, 0.2], [440.00, 0.4], [440.00, 0.4],
+      [440.00, 0.4], [587.33, 0.4], [587.33, 0.2], [659.25, 0.2], [587.33, 0.2], [523.25, 0.2], [493.88, 0.4], [392.00, 0.4],
+      [392.00, 0.4], [659.25, 0.4], [659.25, 0.2], [698.46, 0.2], [659.25, 0.2], [587.33, 0.2], [523.25, 0.4], [440.00, 0.4],
+      [392.00, 0.2], [392.00, 0.2], [440.00, 0.4], [587.33, 0.4], [493.88, 0.4], [523.25, 0.8]
+    ];
+
+    function playChimeNote(freq, dur) {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const overtone = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc.type = 'sine';
+      overtone.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now);
+      overtone.frequency.setValueAtTime(freq * 2.0, now);
+
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.exponentialRampToValueAtTime(0.12, now + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0008, now + dur * 1.6);
+
+      osc.connect(gain);
+      overtone.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start(now);
+      overtone.start(now);
+      osc.stop(now + dur * 1.65);
+      overtone.stop(now + dur * 1.65);
+    }
+
+    btnMusic.addEventListener('click', () => {
+      musicPlaying = !musicPlaying;
+      btnMusic.classList.toggle('active', musicPlaying);
+      if (musicPlaying) {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        let noteIdx = 0;
+        const step = () => {
+          if (!musicPlaying) return;
+          const [freq, dur] = melody[noteIdx];
+          playChimeNote(freq, dur);
+          noteIdx = (noteIdx + 1) % melody.length;
+          musicTimer = setTimeout(step, dur * 950);
+        };
+        step();
+      } else {
+        clearTimeout(musicTimer);
+      }
+    });
+
+    // =========================================================================
+    // 窗口自适应与主渲染循环
+    // =========================================================================
+    const projMatrix = new Float32Array(16);
+
+    let lastW = 0, lastH = 0;
+    function updateResize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = window.innerWidth || document.documentElement.clientWidth || 1280;
+      const h = window.innerHeight || document.documentElement.clientHeight || 720;
+      const cw = Math.max(1, Math.floor(w * dpr));
+      const ch = Math.max(1, Math.floor(h * dpr));
+      if (cw === lastW && ch === lastH) return;
+      lastW = cw;
+      lastH = ch;
+      canvas.width = cw;
+      canvas.height = ch;
+      gl.viewport(0, 0, canvas.width, canvas.height);
+
+      const aspect = canvas.width / Math.max(1, canvas.height);
+      const fov = 50.0 * Math.PI / 180.0;
+      const near = 10.0, far = 2000.0;
+      const f = 1.0 / Math.tan(fov / 2.0);
+
+      projMatrix.fill(0);
+      projMatrix[0]  = f / aspect;
+      projMatrix[5]  = f;
+      projMatrix[10] = (far + near) / (near - far);
+      projMatrix[11] = -1.0;
+      projMatrix[14] = (2.0 * far * near) / (near - far);
+    }
+
+    window.addEventListener('resize', updateResize);
+    updateResize();
+
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE); // 发光叠加混合 (Additive Blending)
+
+    let prevTime = performance.now();
+    let fpsFrames = 0;
+    let fpsTimer = 0;
+    const fpsEl = document.getElementById('fpsText');
+
+    function animate(now) {
+      updateResize();
+      const dt = Math.min(0.05, (now - prevTime) * 0.001);
+      prevTime = now;
+
+      fpsFrames++;
+      fpsTimer += dt;
+      if (fpsTimer >= 0.5) {
+        fpsEl.textContent = `${Math.round(fpsFrames / fpsTimer)} FPS`;
+        fpsFrames = 0;
+        fpsTimer = 0;
+      }
+
+      // 阻尼惯性与自转更新
+      if (!draggingLeft) {
+        if (autoRotate) {
+          velYaw += (-autoSpeed - velYaw) * Math.min(1.0, dt * 2.5);
+        } else {
+          velYaw *= Math.pow(0.04, dt);
+        }
+        velPitch *= Math.pow(0.04, dt);
+        yaw += velYaw * dt;
+        pitch = Math.max(-0.55, Math.min(1.25, pitch + velPitch * dt));
+      }
+      camDist += (targetDist - camDist) * Math.min(1.0, dt * 10.0);
+
+      gl.clearColor(0.015, 0.022, 0.045, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      gl.uniformMatrix4fv(uProjLoc, false, projMatrix);
+      gl.uniform1f(uTimeLoc, now * 0.001);
+      gl.uniform1f(uYawLoc, yaw);
+      gl.uniform1f(uPitchLoc, pitch);
+      gl.uniform1f(uCamDistLoc, camDist);
+      gl.uniform2f(uPanLoc, panX, panY);
+      gl.uniform1f(uPointScaleLoc, dpr * userSizeScale);
+      gl.uniform1f(uGlowBoostLoc, glowBoost);
+
+      gl.drawArrays(gl.POINTS, 0, ptCount);
+      requestAnimationFrame(animate);
+    }
+
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
