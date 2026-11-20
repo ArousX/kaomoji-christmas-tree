@@ -109,14 +109,15 @@
       outline-offset: 2px;
     }
 
-    /* 左侧静谧排版标题区 */
+    /* 左侧静谧排版与精简控制区 */
     .hero-overlay {
       position: fixed;
-      left: 36px;
-      top: 32vh;
-      z-index: 10;
+      left: 40px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 20;
       pointer-events: auto;
-      max-width: 268px;
+      width: 268px;
     }
 
     .hero-meta {
@@ -139,7 +140,7 @@
 
     .hero-title {
       font-family: "Great Vibes", "Brush Script MT", "Segoe Script", "Snell Roundhand", "Apple Chancery", cursive;
-      font-size: clamp(38px, 4.4vw, 56px);
+      font-size: clamp(38px, 4.2vw, 54px);
       font-weight: 400;
       line-height: 1.15;
       letter-spacing: 0.01em;
@@ -165,91 +166,24 @@
     }
 
     .hero-sub {
-      margin-top: 16px;
-      font-size: 13px;
-      line-height: 20px;
-      color: var(--text-2);
-    }
-
-    .hero-keys {
       margin-top: 12px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      font-size: 12px;
-      line-height: 16px;
-      color: var(--text-3);
-    }
-
-    .keycap {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 4px 8px;
-      border-radius: 6px;
-      background: var(--surface-raised);
-      border: 1px solid var(--border-hairline);
-      font-size: 12px;
-      color: var(--text-2);
-    }
-
-    /* 右上角克制工具面板 (4px 网格 + 嵌套圆角 16px -> 8px) */
-    .control-panel {
-      position: fixed;
-      top: 24px;
-      right: 24px;
-      z-index: 20;
-      width: 280px;
-      padding: 16px;
-      border-radius: 16px;
-      background-color: var(--surface-panel);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid var(--border-hairline);
-      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
-      transition: background-color 0.24s var(--ease-out), border-color 0.24s var(--ease-out);
-    }
-
-    body.paper-mode .control-panel {
-      background-color: rgba(251, 248, 241, 0.96);
-      border-color: rgba(31, 27, 22, 0.14);
-      box-shadow: 0 8px 24px rgba(31, 27, 22, 0.09);
-    }
-
-    .panel-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 12px;
       font-size: 13px;
-      font-weight: 500;
       line-height: 20px;
-      color: var(--text-1);
-    }
-
-    .panel-title-group {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .panel-title-group .ui-icon {
       color: var(--text-2);
     }
 
-    .fps-badge {
-      font-family: var(--font-mono);
+    .hero-section-label {
+      margin-top: 20px;
+      margin-bottom: 8px;
       font-size: 12px;
       line-height: 16px;
       color: var(--text-3);
-      font-variant-numeric: tabular-nums;
     }
 
     .theme-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
-      margin-bottom: 16px;
     }
 
     .theme-btn {
@@ -304,40 +238,44 @@
       flex-shrink: 0;
     }
 
-    .control-group {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      padding: 12px 0;
-      border-top: 1px solid var(--border-hairline);
-      border-bottom: 1px solid var(--border-hairline);
-    }
-
-    .control-row {
+    /* 主按钮：高对比实体强调色 + 克制微距 */
+    .write-card-btn {
+      width: 100%;
+      height: 40px;
+      margin-top: 16px;
+      padding: 0 16px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      background: var(--accent);
+      color: var(--accent-text);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      height: 28px;
-      font-size: 12px;
-      line-height: 16px;
-      color: var(--text-2);
+      justify-content: center;
+      gap: 8px;
+      transition: background-color 0.16s var(--ease-out), transform 0.12s var(--ease-out);
     }
 
-    .control-row input[type="range"] {
-      width: 132px;
-      accent-color: var(--accent);
-      cursor: pointer;
+    .write-card-btn:hover {
+      background: var(--accent-hover);
+    }
+
+    .write-card-btn:active {
+      transform: scale(0.98);
     }
 
     .action-row {
       display: flex;
       gap: 8px;
-      margin-top: 12px;
+      margin-top: 8px;
     }
 
     .action-btn {
       flex: 1;
-      height: 36px;
+      height: 32px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -382,40 +320,22 @@
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
     }
 
-    /* 主按钮：高对比实体强调色 + 克制微距 */
-    .write-card-btn {
-      width: 100%;
-      height: 40px;
-      margin-top: 12px;
-      padding: 0 16px;
-      border-radius: 8px;
-      border: 1px solid transparent;
-      background: var(--accent);
-      color: var(--accent-text);
-      font-family: inherit;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      transition: background-color 0.16s var(--ease-out), transform 0.12s var(--ease-out);
-    }
-
-    .write-card-btn:hover {
-      background: var(--accent-hover);
-    }
-
-    .write-card-btn:active {
-      transform: scale(0.98);
-    }
-
     .card-count-mono {
       font-family: var(--font-mono);
       font-size: 12px;
       font-variant-numeric: tabular-nums;
       opacity: 0.78;
+    }
+
+    .cloud-sync-status {
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-3);
+      font-variant-numeric: tabular-nums;
     }
 
     .cloud-sync-status {
@@ -1015,19 +935,20 @@
 
     @media (max-width: 768px) {
       .hero-overlay {
-        left: 20px;
-        top: 20px;
-        max-width: 240px;
-      }
-      .hero-keys {
-        display: none;
-      }
-      .control-panel {
+        left: 16px;
+        right: 16px;
         top: auto;
         bottom: 16px;
-        right: 16px;
-        left: 16px;
+        transform: none;
         width: auto;
+        padding: 16px;
+        border-radius: 16px;
+        background-color: var(--surface-panel);
+        border: 1px solid var(--border-hairline);
+      }
+      .hero-sub,
+      .hero-section-label {
+        display: none;
       }
     }
   </style>
@@ -1035,7 +956,7 @@
 <body>
   <canvas id="treeCanvas"></canvas>
 
-  <!-- 左侧静谧排版标题区 -->
+  <!-- 左侧静谧排版与精简控制区（无右侧遮挡面板） -->
   <div class="hero-overlay">
     <div class="hero-meta">
       <span class="hero-meta-dot" aria-hidden="true"></span>
@@ -1044,25 +965,10 @@
     <div class="hero-title" contenteditable="true" spellcheck="false">Merry Christmas</div>
     <div class="hero-kaomoji" contenteditable="true" spellcheck="false"><span class="hero-script-sub">to you</span> (=^•ω•^=) ♡</div>
     <div class="hero-sub">
-      点击树身或信封拆开祝福，也可以写一封信挂上共享圣诞树
-    </div>
-    <div class="hero-keys">
-      <span class="keycap">左键拖拽 旋转</span>
-      <span class="keycap">滚轮 缩放</span>
-      <span class="keycap">右键 平移</span>
-    </div>
-  </div>
-
-  <!-- 右上角控制面板 -->
-  <div class="control-panel">
-    <div class="panel-header">
-      <span class="panel-title-group">
-        <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2L6.5 10h3.5L5 17h14l-5-7h3.5L12 2z"/><path d="M12 17v5"/></svg>
-        <span>颜文字圣诞树</span>
-      </span>
-      <span class="fps-badge" id="fpsText">60 FPS</span>
+      点击树身或信封拆开祝福，拖拽可 360° 旋转
     </div>
 
+    <div class="hero-section-label">树影风格</div>
     <div class="theme-grid">
       <button class="theme-btn active" data-theme="0">
         <span class="theme-swatch" style="background:#69f0ae;" aria-hidden="true"></span>
@@ -1082,22 +988,11 @@
       </button>
     </div>
 
-    <div class="control-group">
-      <div class="control-row">
-        <span>表情大小</span>
-        <input type="range" id="sizeSlider" min="0.7" max="1.5" step="0.05" value="1.05" />
-      </div>
-
-      <div class="control-row">
-        <span>自转速度</span>
-        <input type="range" id="speedSlider" min="0" max="1.4" step="0.05" value="0.35" />
-      </div>
-
-      <div class="control-row">
-        <span>粒子亮度</span>
-        <input type="range" id="glowSlider" min="0.4" max="1.8" step="0.05" value="1.15" />
-      </div>
-    </div>
+    <button class="write-card-btn" id="btnWriteCard">
+      <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3 7 12 13 21 7"/></svg>
+      <span>写一张贺卡挂上树</span>
+      <span class="card-count-mono" id="cardCountBadge">12</span>
+    </button>
 
     <div class="action-row">
       <button class="action-btn active" id="btnAutoRotate">
@@ -1114,11 +1009,6 @@
       </button>
     </div>
 
-    <button class="write-card-btn" id="btnWriteCard">
-      <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3 7 12 13 21 7"/></svg>
-      <span>写一张贺卡挂上树</span>
-      <span class="card-count-mono" id="cardCountBadge">12</span>
-    </button>
     <div class="cloud-sync-status" id="cloudSyncStatus">
       <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
       <span id="cloudSyncText">正在连接共享信箱</span>
@@ -2330,7 +2220,7 @@
     let velPitch = 0.0;
     let camDist = 520;
     let targetDist = 520;
-    let panX = 35;
+    let panX = 72;
     let panY = 18;
 
     let autoRotate = true;
@@ -2925,16 +2815,6 @@
       });
     });
 
-    document.getElementById('sizeSlider').addEventListener('input', (e) => {
-      sizeMultiplier = parseFloat(e.target.value);
-    });
-    document.getElementById('speedSlider').addEventListener('input', (e) => {
-      autoSpeed = parseFloat(e.target.value);
-    });
-    document.getElementById('glowSlider').addEventListener('input', (e) => {
-      glowMultiplier = parseFloat(e.target.value);
-    });
-
     const btnAutoRotate = document.getElementById('btnAutoRotate');
     btnAutoRotate.addEventListener('click', () => {
       autoRotate = !autoRotate;
@@ -2944,7 +2824,7 @@
     document.getElementById('btnReset').addEventListener('click', () => {
       pitch = 0.08;
       targetDist = 520;
-      panX = 35;
+      panX = 72;
       panY = 18;
       velYaw = -autoSpeed;
       velPitch = 0;
@@ -3029,23 +2909,12 @@
 
     const renderQueue = [];
     let prevTime = performance.now();
-    let fpsFrames = 0;
-    let fpsAcc = 0;
-    const fpsEl = document.getElementById('fpsText');
 
     function animate(now) {
       resizeCanvas();
       const dt = Math.min(0.05, (now - prevTime) * 0.001);
       prevTime = now;
       const timeSec = now * 0.001;
-
-      fpsFrames++;
-      fpsAcc += dt;
-      if (fpsAcc >= 0.5) {
-        fpsEl.textContent = `${Math.round(fpsFrames / fpsAcc)} FPS`;
-        fpsFrames = 0;
-        fpsAcc = 0;
-      }
 
       if (!draggingLeft) {
         if (autoRotate) {
