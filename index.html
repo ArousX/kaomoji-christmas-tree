@@ -1392,11 +1392,11 @@
       let cached = textSpriteCache.get(key);
       if (cached) return cached;
 
-      const baseFontPx = (styleType === 'trunk') ? 52 : ((styleType === 'formula') ? 30 : 34);
+      const baseFontPx = (styleType === 'formula') ? 30 : 34;
       const pad = isPaper ? 14 : 26;
       let fontSpec;
       if (styleType === 'trunk') {
-        fontSpec = `400 ${baseFontPx}px "Great Vibes", "Brush Script MT", "Segoe Script", "Apple Chancery", cursive`;
+        fontSpec = `700 ${baseFontPx}px "Comic Sans MS", "Segoe UI Symbol", "Microsoft YaHei", "Yu Gothic UI", sans-serif`;
       } else if (styleType === 'formula') {
         fontSpec = `italic 700 ${baseFontPx}px "Cambria Math", "Times New Roman", "Georgia", serif`;
       } else {
@@ -1407,7 +1407,7 @@
       const octx = off.getContext('2d');
       octx.font = fontSpec;
       const metrics = octx.measureText(text);
-      const textW = Math.ceil(metrics.width) + ((styleType === 'trunk') ? 22 : 6);
+      const textW = Math.ceil(metrics.width) + 6;
       const textH = Math.ceil(baseFontPx * 1.45);
 
       off.width = textW + pad * 2;
@@ -1421,7 +1421,7 @@
       if (!isPaper) {
         // 仅在首次建缓存时烘焙一次柔和霓虹发光，主循环零开销！
         octx.shadowColor = color;
-        octx.shadowBlur = (styleType === 'trunk') ? 18 : 14;
+        octx.shadowBlur = 14;
         octx.fillText(text, off.width * 0.5, off.height * 0.5);
         octx.shadowBlur = 4;
         octx.fillText(text, off.width * 0.5, off.height * 0.5);
@@ -1942,9 +1942,9 @@
 
       // 3. 树干文字：Merry / Christmas / to you
       [
-        { text: 'Merry',     y: bottomY - 26, size: 23 },
-        { text: 'Christmas', y: bottomY - 52, size: 25 },
-        { text: 'to you',    y: bottomY - 78, size: 21 }
+        { text: 'Merry',     y: bottomY - 26, size: 19 },
+        { text: 'Christmas', y: bottomY - 52, size: 21 },
+        { text: 'to you',    y: bottomY - 78, size: 17 }
       ].forEach((ln, idx) => {
         treeNodes.push({
           type: 'trunkText',
