@@ -165,12 +165,44 @@
       72%, 100% { background-position: -110% 0; }
     }
 
+    /* 全页启动帷幕：从中央微光晕开消散（不阻塞交互） */
+    .intro-curtain {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      pointer-events: none;
+      background: radial-gradient(
+        circle at 56% 48%,
+        rgba(232, 184, 109, 0.06) 0%,
+        rgba(7, 10, 18, 0.82) 34%,
+        #05070e 72%
+      );
+      animation: introCurtainReveal 1.05s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      will-change: opacity, transform;
+    }
+
+    @keyframes introCurtainReveal {
+      0% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      65% {
+        opacity: 0.45;
+        transform: scale(1.04);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(1.08);
+        visibility: hidden;
+      }
+    }
+
     /* React Bits: BlurText 逐段柔焦渐显入场 */
     .rb-blur-enter {
       opacity: 0;
       filter: blur(8px);
-      transform: translate3d(0, 12px, 0);
-      animation: rbBlurIn 0.56s var(--ease-out) var(--rb-delay, 0ms) forwards;
+      transform: translate3d(0, 14px, 0);
+      animation: rbBlurIn 0.64s var(--ease-out) var(--rb-delay, 0ms) forwards;
     }
 
     @keyframes rbBlurIn {
@@ -925,7 +957,8 @@
         filter: none !important;
         transform: none !important;
       }
-      .star-border-canvas {
+      .star-border-canvas,
+      .intro-curtain {
         display: none !important;
       }
     }
@@ -1046,20 +1079,21 @@
   </style>
 </head>
 <body>
+  <div class="intro-curtain" id="introCurtain" aria-hidden="true"></div>
   <canvas id="treeCanvas"></canvas>
 
   <!-- 左侧静谧排版与精简控制区（融入 React Bits BlurText / ShinyText / Magnet / StarBorder） -->
   <div class="hero-overlay">
-    <div class="rb-blur-enter" style="--rb-delay:0ms;">
+    <div class="rb-blur-enter" style="--rb-delay:240ms;">
       <div class="hero-title rb-shiny" contenteditable="true" spellcheck="false">Merry Christmas</div>
     </div>
-    <div class="hero-kaomoji rb-blur-enter" style="--rb-delay:140ms;" contenteditable="true" spellcheck="false"><span class="hero-script-sub">to you</span> (=^•ω•^=) ♡</div>
-    <div class="hero-sub rb-blur-enter" style="--rb-delay:210ms;">
+    <div class="hero-kaomoji rb-blur-enter" style="--rb-delay:400ms;" contenteditable="true" spellcheck="false"><span class="hero-script-sub">to you</span> (=^•ω•^=) ♡</div>
+    <div class="hero-sub rb-blur-enter" style="--rb-delay:520ms;">
       点击树身或信封拆开祝福，拖拽可 360° 旋转
     </div>
 
-    <div class="hero-section-label rb-blur-enter" style="--rb-delay:260ms;">树影风格</div>
-    <div class="theme-grid rb-blur-enter" style="--rb-delay:300ms;">
+    <div class="hero-section-label rb-blur-enter" style="--rb-delay:620ms;">树影风格</div>
+    <div class="theme-grid rb-blur-enter" style="--rb-delay:700ms;">
       <button class="theme-btn active" data-theme="0">
         <span class="theme-emoji" aria-hidden="true">🎄</span>
         <span>夜色霓虹</span>
@@ -1078,7 +1112,7 @@
       </button>
     </div>
 
-    <div class="star-border-wrap rb-blur-enter" id="starBorderWrap" style="--rb-delay:360ms;">
+    <div class="star-border-wrap rb-blur-enter" id="starBorderWrap" style="--rb-delay:820ms;">
       <canvas class="star-border-canvas" id="starBorderCanvas" aria-hidden="true"></canvas>
       <button class="write-card-btn" id="btnWriteCard">
         <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3 7 12 13 21 7"/></svg>
@@ -1086,7 +1120,7 @@
       </button>
     </div>
 
-    <div class="action-row rb-blur-enter" style="--rb-delay:420ms;">
+    <div class="action-row rb-blur-enter" style="--rb-delay:920ms;">
       <button class="action-btn active" id="btnAutoRotate">
         <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
         <span>自转</span>
@@ -1101,7 +1135,7 @@
       </button>
     </div>
 
-    <div class="cloud-sync-status rb-blur-enter" id="cloudSyncStatus" style="--rb-delay:480ms;">
+    <div class="cloud-sync-status rb-blur-enter" id="cloudSyncStatus" style="--rb-delay:1020ms;">
       <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
       <span id="cloudSyncText">正在连接共享信箱</span>
     </div>
@@ -2299,11 +2333,16 @@
     // =========================================================================
     // 鼠标拖拽 360° 自由旋转 + 惯性 + 滚轮缩放 + 右键平移 + 点击放飞烟花
     // =========================================================================
-    let yaw = 0.0;
+    const prefersReducedMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    let introElapsed = prefersReducedMotion ? 2.5 : 0;
+    let introComplete = prefersReducedMotion;
+    let introStarBurstDone = prefersReducedMotion;
+
+    let yaw = prefersReducedMotion ? 0.0 : 0.72;
     let pitch = 0.08;
-    let velYaw = -0.35;
+    let velYaw = prefersReducedMotion ? -0.35 : -1.45;
     let velPitch = 0.0;
-    let camDist = 520;
+    let camDist = prefersReducedMotion ? 520 : 680;
     let targetDist = 520;
     let panX = 104;
     let panY = 18;
@@ -2322,6 +2361,43 @@
     let lastY = 0;
     let mouseX = -9999;
     let mouseY = -9999;
+
+    function easeOutCubic(x) {
+      return 1 - Math.pow(1 - x, 3);
+    }
+
+    function easeOutBack(x) {
+      const c1 = 1.70158;
+      const c3 = c1 + 1;
+      return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
+    }
+
+    function spawnIntroStarBurst(sx, sy) {
+      const theme = THEMES[currentThemeIdx];
+      const count = 14;
+      for (let i = 0; i < count; i++) {
+        const ang = (i / count) * Math.PI * 2 + rand(-0.18, 0.18);
+        const spd = rand(65, 165);
+        const shp = (i % 2 === 0) ? 'spark' : 'star';
+        const col = (i % 3 === 0) ? theme.starColor : theme.palette[i % theme.palette.length];
+        burstEffects.push({
+          x: sx,
+          y: sy,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd - 24,
+          gravity: 55,
+          drag: 0.96,
+          rot: rand(-0.4, 0.4),
+          vrot: rand(-2.2, 2.2),
+          swayAmp: 0,
+          phase: rand(0, Math.PI * 2),
+          sprite: getVectorBurstSprite(shp, col, theme.paper),
+          life: 1.0,
+          decay: rand(0.95, 1.35),
+          size: rand(14, 22)
+        });
+      }
+    }
 
     function spawnBurst(sx, sy) {
       const theme = THEMES[currentThemeIdx];
@@ -3001,9 +3077,18 @@
       prevTime = now;
       const timeSec = now * 0.001;
 
+      if (!introComplete) {
+        introElapsed += dt;
+        if (introElapsed >= 1.95) {
+          introComplete = true;
+          const ic = document.getElementById('introCurtain');
+          if (ic) ic.remove();
+        }
+      }
+
       if (!draggingLeft) {
         if (autoRotate) {
-          velYaw += (-autoSpeed - velYaw) * Math.min(1, dt * 2.4);
+          velYaw += (-autoSpeed - velYaw) * Math.min(1, dt * (introComplete ? 2.4 : 2.1));
         } else {
           velYaw *= Math.pow(0.05, dt);
         }
@@ -3011,7 +3096,7 @@
         yaw += velYaw * dt;
         pitch = Math.max(-0.55, Math.min(1.15, pitch + velPitch * dt));
       }
-      camDist += (targetDist - camDist) * Math.min(1, dt * 9.5);
+      camDist += (targetDist - camDist) * Math.min(1, dt * (introComplete ? 9.5 : 3.6));
 
       const theme = THEMES[currentThemeIdx];
       const isPaper = theme.paper;
@@ -3026,6 +3111,7 @@
       const fov = Math.min(viewW, viewH) * 0.98;
       const cx = viewW * 0.52 + panX;
       const cy = viewH * 0.49;
+      const snowIntroAlpha = introComplete ? 1 : easeOutCubic(Math.min(1, introElapsed / 0.85));
 
       // 1. 绘制漫天强化 3D 飘雪（发光雪尘 + 立体雪花符号，全贴图加速）
       if (!isPaper) ctx.globalCompositeOperation = 'lighter';
@@ -3051,7 +3137,7 @@
         const sx = cx + rx * scale;
         const sy = cy - (py * cosP - rz1 * sinP) * scale;
         const twinkle = 0.72 + 0.28 * Math.sin(timeSec * 3.2 + s.phase);
-        ctx.globalAlpha = Math.max(0.18, Math.min(1.0, (460 / depth) * s.alphaBase * twinkle)) * (isPaper ? 0.68 : 0.96);
+        ctx.globalAlpha = Math.max(0.18, Math.min(1.0, (460 / depth) * s.alphaBase * twinkle)) * (isPaper ? 0.68 : 0.96) * snowIntroAlpha;
 
         if (s.isFlake) {
           const ratio = (s.size * scale * 0.62) / s.sprite.baseFontPx;
@@ -3071,6 +3157,16 @@
 
       for (let i = 0; i < sparkleNodes.length; i++) {
         const sp = sparkleNodes[i];
+        let spIntroAlpha = 1;
+        let spIntroScale = 1;
+        if (!introComplete) {
+          const spStart = sp.kind === 'ground' ? 0.04 : (0.08 + (sp.param || 0) * 0.84);
+          const p = Math.max(0, Math.min(1, (introElapsed - spStart) / 0.34));
+          if (p <= 0) continue;
+          spIntroAlpha = easeOutCubic(p);
+          spIntroScale = 0.35 + 0.65 * easeOutBack(p);
+        }
+
         let px = sp.x, py = sp.y, pz = sp.z;
         if (sp.kind === 'ground') {
           px = sp.x * cg - sp.z * sg;
@@ -3091,8 +3187,8 @@
         if (sp.kind === 'ribbon') {
           twinkle *= 0.65 + 0.55 * Math.sin(sp.param * 20 - timeSec * 4.5);
         }
-        const diam = Math.max(2.5, sp.size * scale * 0.65 * glowMultiplier);
-        ctx.globalAlpha = Math.min(1, (360 / depth) * twinkle * (isPaper ? 0.45 : 0.75) * glowMultiplier);
+        const diam = Math.max(2.5, sp.size * scale * 0.65 * glowMultiplier) * spIntroScale;
+        ctx.globalAlpha = Math.min(1, (360 / depth) * twinkle * (isPaper ? 0.45 : 0.75) * glowMultiplier) * spIntroAlpha;
         ctx.drawImage(sp.sprite, sx - diam * 0.5, sy - diam * 0.5, diam, diam);
       }
 
@@ -3166,19 +3262,56 @@
 
       for (let i = 0; i < renderQueue.length; i++) {
         const { node, sx, sy, depth, scale } = renderQueue[i];
+        let introAlpha = 1;
+        let introPop = 1;
+        let drawX = sx;
+        let drawY = sy;
+
+        if (!introComplete) {
+          let tStart = 0.08;
+          let tDur = 0.40;
+          if (node.type === 'topStar' || node.type === 'starHalo') {
+            tStart = 0.88;
+            tDur = 0.46;
+          } else if (node.type === 'cardOrnament') {
+            const hNorm = Math.max(0, Math.min(1, (node.y + 135) / 315));
+            tStart = 1.00 + hNorm * 0.36;
+            tDur = 0.42;
+          } else {
+            const hNorm = Math.max(0, Math.min(1, (node.y + 135) / 315));
+            tStart = 0.08 + hNorm * 0.80;
+            tDur = 0.40;
+          }
+          const p = Math.max(0, Math.min(1, (introElapsed - tStart) / tDur));
+          if (p <= 0) continue;
+          const introEase = easeOutCubic(p);
+          introAlpha = introEase;
+          introPop = easeOutBack(p);
+          if (node.type === 'cardOrnament') {
+            drawY = sy - (1 - introEase) * 14;
+          } else if (node.type !== 'topStar') {
+            drawX = cx + (sx - cx) * (0.76 + 0.24 * introEase);
+            drawY = sy + (1 - introEase) * 16;
+          }
+        }
+
         const depthRatio = Math.max(0.18, Math.min(1.0, (camDist + 165 - depth) / 310 + 0.36));
         const targetPx = Math.max(8, node.fontSize * scale * sizeMultiplier * 0.72);
         const sp = node.blinking ? node.spriteB : node.spriteA;
 
         if (node.type === 'topStar') {
+          if (!introStarBurstDone && introElapsed >= 0.90) {
+            introStarBurstDone = true;
+            spawnIntroStarBurst(drawX, drawY);
+          }
           const pulse = 1 + 0.08 * Math.sin(timeSec * 4.2);
-          const starSize = targetPx * pulse;
+          const starSize = targetPx * pulse * (introComplete ? 1 : (0.12 + 0.88 * introPop));
           const ratio = starSize / sp.baseFontPx;
           const dw = sp.w * ratio;
           const dh = sp.h * ratio;
 
-          ctx.globalAlpha = 1;
-          ctx.drawImage(sp.canvas, sx - dw * 0.5, sy - dh * 0.5, dw, dh);
+          ctx.globalAlpha = introAlpha;
+          ctx.drawImage(sp.canvas, drawX - dw * 0.5, drawY - dh * 0.5, dw, dh);
 
           // 6 条手绘光芒短线（ミ ★ 彡）
           ctx.strokeStyle = theme.starColor;
@@ -3190,8 +3323,8 @@
           for (let r = 0; r < 6; r++) {
             const a = rayAngles[r];
             const ca = Math.cos(a), sa = Math.sin(a);
-            ctx.moveTo(sx + ca * rInner, sy + sa * rInner);
-            ctx.lineTo(sx + ca * rOuter, sy + sa * rOuter);
+            ctx.moveTo(drawX + ca * rInner, drawY + sa * rInner);
+            ctx.lineTo(drawX + ca * rOuter, drawY + sa * rOuter);
           }
           ctx.stroke();
           continue;
@@ -3200,30 +3333,32 @@
         if (node.type === 'cardOrnament') {
           // 树上悬挂的 3D 极简手绘贺卡（带轻柔钟摆微晃 + 悬停放大）
           const swing = Math.sin(timeSec * 2.2 + node.phase) * 0.14;
-          const cardScale = (targetPx * node.hoverScale) / sp.baseFontPx;
+          const popScale = introComplete ? 1 : (0.18 + 0.82 * introPop);
+          const cardScale = (targetPx * node.hoverScale * popScale) / sp.baseFontPx;
           const dw = sp.w * cardScale;
           const dh = sp.h * cardScale;
 
           ctx.save();
-          ctx.globalAlpha = isPaper
+          ctx.globalAlpha = (isPaper
             ? (0.40 + depthRatio * 0.60)
-            : (0.35 + depthRatio * 0.65);
-          ctx.translate(sx, sy);
+            : (0.35 + depthRatio * 0.65)) * introAlpha;
+          ctx.translate(drawX, drawY);
           ctx.rotate(swing);
           ctx.drawImage(sp.canvas, -dw * 0.5, -dh * 0.5, dw, dh);
           ctx.restore();
           continue;
         }
 
-        const ratio = targetPx / sp.baseFontPx;
+        const popScale = introComplete ? 1 : (0.24 + 0.76 * introPop);
+        const ratio = (targetPx * popScale) / sp.baseFontPx;
         const dw = sp.w * ratio;
         const dh = sp.h * ratio;
 
-        ctx.globalAlpha = (node.type === 'trunkText')
+        ctx.globalAlpha = ((node.type === 'trunkText')
           ? 0.96
-          : (isPaper ? (0.28 + depthRatio * 0.72) : (0.22 + depthRatio * 0.78));
+          : (isPaper ? (0.28 + depthRatio * 0.72) : (0.22 + depthRatio * 0.78))) * introAlpha;
 
-        ctx.drawImage(sp.canvas, sx - dw * 0.5, sy - dh * 0.5, dw, dh);
+        ctx.drawImage(sp.canvas, drawX - dw * 0.5, drawY - dh * 0.5, dw, dh);
       }
 
       // 5. 渲染 4 套风格专属点击粒子特效（支持物理重力/浮力、阻尼、摇曳、旋转）
