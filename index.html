@@ -148,6 +148,56 @@
       outline: none;
     }
 
+    /* React Bits: ShinyText 扫光效果（编辑时自动暂停保持清晰） */
+    .hero-title.rb-shiny:not(:focus) {
+      background-image: linear-gradient(
+        115deg,
+        var(--text-1) 0%,
+        var(--text-1) 40%,
+        #fff6d6 50%,
+        var(--text-1) 60%,
+        var(--text-1) 100%
+      );
+      background-size: 240% 100%;
+      background-position: 120% 0;
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: rbShinySweep 5.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    body.paper-mode .hero-title.rb-shiny:not(:focus) {
+      background-image: linear-gradient(
+        115deg,
+        #1f1b16 0%,
+        #1f1b16 40%,
+        #8c6239 50%,
+        #1f1b16 60%,
+        #1f1b16 100%
+      );
+    }
+
+    @keyframes rbShinySweep {
+      0%, 28% { background-position: 130% 0; }
+      72%, 100% { background-position: -110% 0; }
+    }
+
+    /* React Bits: BlurText 逐段柔焦渐显入场 */
+    .rb-blur-enter {
+      opacity: 0;
+      filter: blur(8px);
+      transform: translate3d(0, 12px, 0);
+      animation: rbBlurIn 0.56s var(--ease-out) var(--rb-delay, 0ms) forwards;
+    }
+
+    @keyframes rbBlurIn {
+      to {
+        opacity: 1;
+        filter: blur(0px);
+        transform: translate3d(0, 0, 0);
+      }
+    }
+
     .hero-kaomoji {
       margin-top: 8px;
       font-size: 16px;
@@ -186,6 +236,7 @@
       gap: 8px;
     }
 
+    /* React Bits Magnet 磁吸弹簧变量兼容 */
     .theme-btn {
       display: flex;
       align-items: center;
@@ -200,8 +251,10 @@
       font-size: 12px;
       font-weight: 500;
       cursor: pointer;
-      transition: background-color 0.16s var(--ease-out), border-color 0.16s var(--ease-out), color 0.16s var(--ease-out), transform 0.12s var(--ease-out);
+      transform: translate3d(var(--mag-x, 0px), var(--mag-y, 0px), 0);
+      transition: background-color 0.16s var(--ease-out), border-color 0.16s var(--ease-out), color 0.16s var(--ease-out);
       text-align: left;
+      will-change: transform;
     }
 
     .theme-btn:hover {
@@ -210,7 +263,7 @@
     }
 
     .theme-btn:active {
-      transform: scale(0.98);
+      transform: translate3d(var(--mag-x, 0px), var(--mag-y, 0px), 0) scale(0.97);
     }
 
     .theme-btn.active {
@@ -242,11 +295,30 @@
       flex-shrink: 0;
     }
 
-    /* 主按钮：高对比实体强调色 + 克制微距 */
+    /* 主按钮：高对比实体强调色 + React Bits StarBorder 星轨 + Magnet 磁吸 */
+    .star-border-wrap {
+      position: relative;
+      margin-top: 16px;
+      width: 100%;
+      transform: translate3d(var(--mag-x, 0px), var(--mag-y, 0px), 0);
+      will-change: transform;
+    }
+
+    .star-border-canvas {
+      position: absolute;
+      top: -22px;
+      left: -22px;
+      width: calc(100% + 44px);
+      height: calc(100% + 44px);
+      pointer-events: none;
+      z-index: 2;
+    }
+
     .write-card-btn {
+      position: relative;
+      z-index: 1;
       width: 100%;
       height: 40px;
-      margin-top: 16px;
       padding: 0 16px;
       border-radius: 8px;
       border: 1px solid transparent;
@@ -396,6 +468,37 @@
       perspective: 1200px;
       width: min(440px, 92vw);
       position: relative;
+    }
+
+    /* React Bits: TiltedCard 3D 陀螺仪倾斜承载体 */
+    .envelope-tilt-layer {
+      transform-style: preserve-3d;
+      transform: rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+      will-change: transform;
+    }
+
+    .env-letter-glare {
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      opacity: var(--glare-op, 0);
+      background: radial-gradient(
+        circle at var(--glare-x, 50%) var(--glare-y, 50%),
+        rgba(255, 250, 232, 0.22) 0%,
+        rgba(255, 250, 232, 0.06) 36%,
+        rgba(255, 250, 232, 0) 68%
+      );
+      transition: opacity 0.22s var(--ease-out);
+    }
+
+    body.paper-mode .env-letter-glare {
+      background: radial-gradient(
+        circle at var(--glare-x, 50%) var(--glare-y, 50%),
+        rgba(255, 255, 255, 0.55) 0%,
+        rgba(255, 255, 255, 0.14) 38%,
+        rgba(255, 255, 255, 0) 68%
+      );
     }
 
     .envelope-shell {
@@ -835,10 +938,19 @@
       .letter-reveal,
       .gift-card-box,
       .card-btn,
-      .toast-msg {
+      .toast-msg,
+      .rb-blur-enter,
+      .hero-title.rb-shiny {
         transition-duration: 0.01ms !important;
         transition-delay: 0s !important;
         animation-duration: 0.01ms !important;
+        animation: none !important;
+        opacity: 1 !important;
+        filter: none !important;
+        transform: none !important;
+      }
+      .star-border-canvas {
+        display: none !important;
       }
     }
 
@@ -960,20 +1072,20 @@
 <body>
   <canvas id="treeCanvas"></canvas>
 
-  <!-- 左侧静谧排版与精简控制区（无右侧遮挡面板） -->
+  <!-- 左侧静谧排版与精简控制区（融入 React Bits BlurText / ShinyText / Magnet / StarBorder / CountUp） -->
   <div class="hero-overlay">
-    <div class="hero-meta">
+    <div class="hero-meta rb-blur-enter" style="--rb-delay:0ms;">
       <span class="hero-meta-dot" aria-hidden="true"></span>
       <span>2026 Winter Postbox</span>
     </div>
-    <div class="hero-title" contenteditable="true" spellcheck="false">Merry Christmas</div>
-    <div class="hero-kaomoji" contenteditable="true" spellcheck="false"><span class="hero-script-sub">to you</span> (=^•ω•^=) ♡</div>
-    <div class="hero-sub">
+    <div class="hero-title rb-blur-enter rb-shiny" style="--rb-delay:70ms;" contenteditable="true" spellcheck="false">Merry Christmas</div>
+    <div class="hero-kaomoji rb-blur-enter" style="--rb-delay:140ms;" contenteditable="true" spellcheck="false"><span class="hero-script-sub">to you</span> (=^•ω•^=) ♡</div>
+    <div class="hero-sub rb-blur-enter" style="--rb-delay:210ms;">
       点击树身或信封拆开祝福，拖拽可 360° 旋转
     </div>
 
-    <div class="hero-section-label">树影风格</div>
-    <div class="theme-grid">
+    <div class="hero-section-label rb-blur-enter" style="--rb-delay:260ms;">树影风格</div>
+    <div class="theme-grid rb-blur-enter" style="--rb-delay:300ms;">
       <button class="theme-btn active" data-theme="0">
         <span class="theme-emoji" aria-hidden="true">🎄</span>
         <span>夜色霓虹</span>
@@ -992,13 +1104,16 @@
       </button>
     </div>
 
-    <button class="write-card-btn" id="btnWriteCard">
-      <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3 7 12 13 21 7"/></svg>
-      <span>写一张贺卡挂上树</span>
-      <span class="card-count-mono" id="cardCountBadge">12</span>
-    </button>
+    <div class="star-border-wrap rb-blur-enter" id="starBorderWrap" style="--rb-delay:360ms;">
+      <canvas class="star-border-canvas" id="starBorderCanvas" aria-hidden="true"></canvas>
+      <button class="write-card-btn" id="btnWriteCard">
+        <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3 7 12 13 21 7"/></svg>
+        <span>写一张贺卡挂上树</span>
+        <span class="card-count-mono" id="cardCountBadge">12</span>
+      </button>
+    </div>
 
-    <div class="action-row">
+    <div class="action-row rb-blur-enter" style="--rb-delay:420ms;">
       <button class="action-btn active" id="btnAutoRotate">
         <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
         <span>自转</span>
@@ -1013,62 +1128,65 @@
       </button>
     </div>
 
-    <div class="cloud-sync-status" id="cloudSyncStatus">
+    <div class="cloud-sync-status rb-blur-enter" id="cloudSyncStatus" style="--rb-delay:480ms;">
       <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
       <span id="cloudSyncText">正在连接共享信箱</span>
     </div>
   </div>
 
-  <!-- 3D 立体信封拆封祝福贺卡弹窗 -->
+  <!-- 3D 立体信封拆封祝福贺卡弹窗（含 React Bits TiltedCard 3D 倾角与光泽） -->
   <div class="modal-backdrop" id="cardModalBackdrop">
-    <div class="envelope-stage">
-      <div class="envelope-shell" id="envelopeShell">
-        <!-- 1. 信封背板 -->
-        <div class="env-back"></div>
+    <div class="envelope-stage" id="envelopeStage">
+      <div class="envelope-tilt-layer" id="envelopeTiltLayer">
+        <div class="envelope-shell" id="envelopeShell">
+          <!-- 1. 信封背板 -->
+          <div class="env-back"></div>
 
-        <!-- 2. 信封顶部 3D 翻盖 + 火漆印章 -->
-        <div class="env-flap-wrap">
-          <svg class="env-flap-svg" viewBox="0 0 440 150" preserveAspectRatio="none" aria-hidden="true">
-            <path class="env-flap-fill" d="M 2,2 Q 2,0 14,0 L 426,0 Q 438,0 438,2 L 228,128 Q 220,133 212,128 Z" />
-          </svg>
-          <div class="env-wax-seal" id="envWaxSeal">★</div>
-        </div>
-
-        <!-- 3. 从信封内抽出的祝福信纸卡片 -->
-        <div class="env-letter">
-          <button class="modal-close-btn" id="btnCloseCardModal" title="关闭" aria-label="关闭">
-            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
-          </button>
-          <div class="card-tag-row letter-reveal lr-1">
-            <span class="card-tag-pill" id="cardTagPill">No.01 · 树上挂卡</span>
-            <span id="cardStyleLabel">礼物祝福卡</span>
+          <!-- 2. 信封顶部 3D 翻盖 + 火漆印章 -->
+          <div class="env-flap-wrap">
+            <svg class="env-flap-svg" viewBox="0 0 440 150" preserveAspectRatio="none" aria-hidden="true">
+              <path class="env-flap-fill" d="M 2,2 Q 2,0 14,0 L 426,0 Q 438,0 438,2 L 228,128 Q 220,133 212,128 Z" />
+            </svg>
+            <div class="env-wax-seal" id="envWaxSeal">★</div>
           </div>
-          <div class="card-kaomoji-big letter-reveal lr-1" id="cardKaomojiDisplay">(=^•ω•^=) ♡</div>
-          <div class="card-title-text letter-reveal lr-2" id="cardTitleDisplay">冬日好运签</div>
-          <div class="card-message-body letter-reveal lr-3" id="cardBodyDisplay"></div>
-          <div class="card-signature letter-reveal lr-4" id="cardSignDisplay">—— 圣诞小精灵</div>
-        </div>
 
-        <!-- 4. 信封前袋（V 形左右折页与底袋） -->
-        <div class="env-pocket-front">
-          <svg class="env-pocket-svg" viewBox="0 0 440 152" preserveAspectRatio="none" aria-hidden="true">
-            <polygon class="env-pocket-side" points="0,0 220,86 0,152" />
-            <polygon class="env-pocket-side" points="440,0 220,86 440,152" />
-            <path class="env-pocket-bottom" d="M 0,152 L 198,66 Q 220,56 242,66 L 440,152 Z" />
-          </svg>
-        </div>
+          <!-- 3. 从信封内抽出的祝福信纸卡片 -->
+          <div class="env-letter">
+            <div class="env-letter-glare" aria-hidden="true"></div>
+            <button class="modal-close-btn" id="btnCloseCardModal" title="关闭" aria-label="关闭">
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+            <div class="card-tag-row letter-reveal lr-1">
+              <span class="card-tag-pill" id="cardTagPill">No.01 · 树上挂卡</span>
+              <span id="cardStyleLabel">礼物祝福卡</span>
+            </div>
+            <div class="card-kaomoji-big letter-reveal lr-1" id="cardKaomojiDisplay">(=^•ω•^=) ♡</div>
+            <div class="card-title-text letter-reveal lr-2" id="cardTitleDisplay">冬日好运签</div>
+            <div class="card-message-body letter-reveal lr-3" id="cardBodyDisplay"></div>
+            <div class="card-signature letter-reveal lr-4" id="cardSignDisplay">—— 圣诞小精灵</div>
+          </div>
 
-        <!-- 5. 信封正面底部交互按钮 -->
-        <div class="env-front-actions">
-          <button class="card-btn" id="btnRandomAnother">
-            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
-            <span>再抽一张</span>
-          </button>
-          <button class="card-btn primary" id="btnOpenComposeFromCard">
-            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>
-            <span>写一张</span>
-          </button>
-          <button class="card-btn danger" id="btnDeleteCard" style="display:none;">摘下</button>
+          <!-- 4. 信封前袋（V 形左右折页与底袋） -->
+          <div class="env-pocket-front">
+            <svg class="env-pocket-svg" viewBox="0 0 440 152" preserveAspectRatio="none" aria-hidden="true">
+              <polygon class="env-pocket-side" points="0,0 220,86 0,152" />
+              <polygon class="env-pocket-side" points="440,0 220,86 440,152" />
+              <path class="env-pocket-bottom" d="M 0,152 L 198,66 Q 220,56 242,66 L 440,152 Z" />
+            </svg>
+          </div>
+
+          <!-- 5. 信封正面底部交互按钮 -->
+          <div class="env-front-actions">
+            <button class="card-btn" id="btnRandomAnother">
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+              <span>再抽一张</span>
+            </button>
+            <button class="card-btn primary" id="btnOpenComposeFromCard">
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>
+              <span>写一张</span>
+            </button>
+            <button class="card-btn danger" id="btnDeleteCard" style="display:none;">摘下</button>
+          </div>
         </div>
       </div>
     </div>
@@ -2111,9 +2229,40 @@
       }
     }
 
+    // React Bits: CountUp 数字平滑递增计数动效
+    let displayedCardCount = 12;
+    let countUpRaf = 0;
+
     function updateCardCountBadge() {
       const el = document.getElementById('cardCountBadge');
-      if (el) el.textContent = String(allCards.length);
+      if (!el) return;
+      const target = allCards.length;
+      if (target === displayedCardCount) {
+        el.textContent = String(target);
+        return;
+      }
+      const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduceMotion) {
+        displayedCardCount = target;
+        el.textContent = String(target);
+        return;
+      }
+      cancelAnimationFrame(countUpRaf);
+      const from = displayedCardCount;
+      const start = performance.now();
+      const duration = 520;
+      const step = (now) => {
+        const t = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - t, 3);
+        const val = Math.round(from + (target - from) * eased);
+        el.textContent = String(val);
+        if (t < 1) {
+          countUpRaf = requestAnimationFrame(step);
+        } else {
+          displayedCardCount = target;
+        }
+      };
+      countUpRaf = requestAnimationFrame(step);
     }
 
     // 将一张祝福贺卡作为 3D 挂件节点挂到圣诞树上
@@ -3179,6 +3328,297 @@
     }
 
     requestAnimationFrame(animate);
+
+    // =========================================================================
+    // React Bits 交互动效模块（零外部依赖原生移植：Magnet / StarBorder / TiltedCard）
+    // =========================================================================
+    (() => {
+      const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduceMotion) return;
+
+      // 1. React Bits Magnet（stiffness: 170, damping: 16 弹簧磁吸交互）
+      const magnetNodes = [];
+      const magnetTargets = [
+        { el: document.getElementById('starBorderWrap'), padding: 56, strength: 4.5, maxOffset: 8 },
+        ...Array.from(document.querySelectorAll('.theme-btn')).map((el) => ({
+          el, padding: 34, strength: 6.5, maxOffset: 4.5
+        }))
+      ].filter((item) => item.el);
+
+      let ptrX = -9999, ptrY = -9999, ptrActive = false;
+
+      magnetTargets.forEach((cfg) => {
+        magnetNodes.push({
+          ...cfg,
+          x: 0, y: 0, vx: 0, vy: 0,
+          raf: 0, last: 0
+        });
+      });
+
+      const smoothstep = (e0, e1, v) => {
+        const t = Math.min(1, Math.max(0, (v - e0) / (e1 - e0)));
+        return t * t * (3 - 2 * t);
+      };
+
+      function stepMagnet(m, now) {
+        m.raf = 0;
+        const dt = m.last ? Math.min((now - m.last) / 1000, 1 / 30) : 1 / 60;
+        m.last = now;
+
+        let tx = 0, ty = 0;
+        if (ptrActive && !draggingLeft && !draggingRight) {
+          const rect = m.el.getBoundingClientRect();
+          const dx = ptrX - (rect.left + rect.width * 0.5);
+          const dy = ptrY - (rect.top + rect.height * 0.5);
+          const outside = Math.hypot(
+            Math.max(0, Math.abs(dx) - rect.width * 0.5),
+            Math.max(0, Math.abs(dy) - rect.height * 0.5)
+          );
+          if (outside <= m.padding) {
+            const pull = 1 - smoothstep(m.padding * 0.4, m.padding, outside);
+            tx = (dx / m.strength) * pull;
+            ty = (dy / m.strength) * pull;
+            const len = Math.hypot(tx, ty);
+            if (len > m.maxOffset) {
+              tx *= m.maxOffset / len;
+              ty *= m.maxOffset / len;
+            }
+          }
+        }
+
+        const stiffness = 170, damping = 16;
+        const fx = stiffness * (tx - m.x) - damping * m.vx;
+        const fy = stiffness * (ty - m.y) - damping * m.vy;
+        m.vx += fx * dt;
+        m.vy += fy * dt;
+        m.x += m.vx * dt;
+        m.y += m.vy * dt;
+
+        m.el.style.setProperty('--mag-x', `${m.x.toFixed(2)}px`);
+        m.el.style.setProperty('--mag-y', `${m.y.toFixed(2)}px`);
+
+        const resting = Math.abs(tx - m.x) < 0.04 && Math.abs(ty - m.y) < 0.04 &&
+                        Math.abs(m.vx) < 0.05 && Math.abs(m.vy) < 0.05;
+        if (resting) {
+          m.x = tx; m.y = ty; m.vx = 0; m.vy = 0;
+          m.el.style.setProperty('--mag-x', `${tx.toFixed(2)}px`);
+          m.el.style.setProperty('--mag-y', `${ty.toFixed(2)}px`);
+          m.last = 0;
+        } else {
+          m.raf = requestAnimationFrame((t) => stepMagnet(m, t));
+        }
+      }
+
+      window.addEventListener('pointermove', (e) => {
+        if (e.pointerType === 'touch') return;
+        ptrX = e.clientX;
+        ptrY = e.clientY;
+        ptrActive = true;
+        for (const m of magnetNodes) {
+          if (!m.raf) m.raf = requestAnimationFrame((t) => stepMagnet(m, t));
+        }
+      }, { passive: true });
+
+      document.documentElement.addEventListener('pointerleave', () => {
+        ptrActive = false;
+        for (const m of magnetNodes) {
+          if (!m.raf) m.raf = requestAnimationFrame((t) => stepMagnet(m, t));
+        }
+      });
+
+      // 2. React Bits StarBorder（沿主按钮圆角矩形轮廓游走的星尘光点轨迹）
+      const starBtnWrap = document.getElementById('starBorderWrap');
+      const starBtn     = document.getElementById('btnWriteCard');
+      const starCanvas  = document.getElementById('starBorderCanvas');
+      if (starBtnWrap && starBtn && starCanvas) {
+        const sctx = starCanvas.getContext('2d');
+        const BLEED = 22;
+        const RADIUS = 8;
+        let phase = 0;
+        let speedBoost = 0;
+        let hovered = false;
+        let lastT = performance.now();
+        const dust = [];
+        let emitAcc = 0;
+
+        function buildOutline(w, h, r) {
+          const cr = Math.min(r, w / 2, h / 2);
+          const arc = (Math.PI * cr) / 2;
+          const across = Math.max(0, w - 2 * cr);
+          const down = Math.max(0, h - 2 * cr);
+          const segs = [
+            { len: across, x: cr, y: 0, dx: 1, dy: 0, ang: null },
+            { len: arc, x: w - cr, y: cr, dx: 0, dy: 0, ang: -Math.PI / 2 },
+            { len: down, x: w, y: cr, dx: 0, dy: 1, ang: null },
+            { len: arc, x: w - cr, y: h - cr, dx: 0, dy: 0, ang: 0 },
+            { len: across, x: w - cr, y: h, dx: -1, dy: 0, ang: null },
+            { len: arc, x: cr, y: h - cr, dx: 0, dy: 0, ang: Math.PI / 2 },
+            { len: down, x: 0, y: h - cr, dx: 0, dy: -1, ang: null },
+            { len: arc, x: cr, y: cr, dx: 0, dy: 0, ang: Math.PI }
+          ];
+          const total = segs.reduce((acc, s) => acc + s.len, 0) || 1;
+          return { cr, segs, total };
+        }
+
+        function samplePoint(shape, dist) {
+          let s = ((dist % shape.total) + shape.total) % shape.total;
+          for (const seg of shape.segs) {
+            if (seg.len > 0 && s <= seg.len) {
+              if (seg.ang === null) {
+                return { x: seg.x + seg.dx * s, y: seg.y + seg.dy * s, nx: seg.dy, ny: -seg.dx };
+              }
+              const a = seg.ang + s / shape.cr;
+              const nx = Math.cos(a), ny = Math.sin(a);
+              return { x: seg.x + nx * shape.cr, y: seg.y + ny * shape.cr, nx, ny };
+            }
+            s -= seg.len;
+          }
+          return { x: 0, y: 0, nx: 0, ny: -1 };
+        }
+
+        starBtn.addEventListener('pointerenter', () => { hovered = true; speedBoost = 1.0; });
+        starBtn.addEventListener('pointerleave', () => { hovered = false; });
+
+        function renderStarBorder(now) {
+          const dt = Math.min(0.05, (now - lastT) * 0.001);
+          lastT = now;
+
+          const rect = starBtn.getBoundingClientRect();
+          const w = Math.max(1, Math.round(rect.width));
+          const h = Math.max(1, Math.round(rect.height));
+          const cw = w + BLEED * 2;
+          const ch = h + BLEED * 2;
+          const sdpr = Math.min(window.devicePixelRatio || 1, 2);
+
+          if (starCanvas.width !== Math.floor(cw * sdpr) || starCanvas.height !== Math.floor(ch * sdpr)) {
+            starCanvas.width = Math.floor(cw * sdpr);
+            starCanvas.height = Math.floor(ch * sdpr);
+          }
+
+          sctx.setTransform(sdpr, 0, 0, sdpr, 0, 0);
+          sctx.clearRect(0, 0, cw, ch);
+
+          const shape = buildOutline(w, h, RADIUS);
+          speedBoost += ((hovered ? 1.0 : 0.0) - speedBoost) * Math.min(1, dt * 6);
+          const velocity = 82 + speedBoost * 190;
+          phase += velocity * dt;
+
+          const isPaper = document.body.classList.contains('paper-mode');
+          const starRgb = isPaper ? '37, 92, 65' : '255, 240, 195';
+
+          // 绘制两颗对称绕边游走的星光尾迹
+          for (let starIdx = 0; starIdx < 2; starIdx++) {
+            const baseDist = phase + starIdx * (shape.total * 0.5);
+            const trailSteps = hovered ? 18 : 13;
+            for (let k = trailSteps; k >= 0; k--) {
+              const p = samplePoint(shape, baseDist - k * 3.2);
+              const t = 1 - k / trailSteps;
+              const alpha = (t * t) * (hovered ? 0.85 : 0.52);
+              const r = 0.8 + t * (hovered ? 1.9 : 1.3);
+              sctx.fillStyle = `rgba(${starRgb}, ${alpha.toFixed(3)})`;
+              sctx.beginPath();
+              sctx.arc(BLEED + p.x, BLEED + p.y, r, 0, Math.PI * 2);
+              sctx.fill();
+            }
+
+            // 头部小星芒
+            const head = samplePoint(shape, baseDist);
+            const hx = BLEED + head.x;
+            const hy = BLEED + head.y;
+            const arm = hovered ? 5.2 : 3.6;
+            sctx.strokeStyle = `rgba(${starRgb}, ${hovered ? 0.95 : 0.72})`;
+            sctx.lineWidth = 1.1;
+            sctx.beginPath();
+            sctx.moveTo(hx - arm, hy); sctx.lineTo(hx + arm, hy);
+            sctx.moveTo(hx, hy - arm); sctx.lineTo(hx, hy + arm);
+            sctx.stroke();
+          }
+
+          // 悬停时沿边框逸出细小星尘
+          if (hovered) {
+            emitAcc += dt * 16;
+            while (emitAcc > 1) {
+              emitAcc -= 1;
+              const p = samplePoint(shape, phase);
+              dust.push({
+                x: BLEED + p.x,
+                y: BLEED + p.y,
+                vx: p.nx * (12 + Math.random() * 24) + (Math.random() - 0.5) * 14,
+                vy: p.ny * (12 + Math.random() * 24) - 8,
+                age: 0,
+                life: 0.4 + Math.random() * 0.35
+              });
+            }
+          }
+
+          for (let i = dust.length - 1; i >= 0; i--) {
+            const d = dust[i];
+            d.age += dt;
+            if (d.age >= d.life) {
+              dust.splice(i, 1);
+              continue;
+            }
+            d.x += d.vx * dt;
+            d.y += d.vy * dt;
+            const a = (1 - d.age / d.life) * 0.75;
+            sctx.fillStyle = `rgba(${starRgb}, ${a.toFixed(3)})`;
+            sctx.beginPath();
+            sctx.arc(d.x, d.y, 1.1, 0, Math.PI * 2);
+            sctx.fill();
+          }
+
+          requestAnimationFrame(renderStarBorder);
+        }
+
+        requestAnimationFrame(renderStarBorder);
+      }
+
+      // 3. React Bits TiltedCard（打开信封后鼠标悬停 3D 视差倾斜 + 纸张镜面高光）
+      const envStage = document.getElementById('envelopeStage');
+      const envTilt  = document.getElementById('envelopeTiltLayer');
+      if (envStage && envTilt) {
+        let tx = 0, ty = 0, cxTilt = 0, cyTilt = 0;
+        let gx = 50, gy = 50, cgx = 50, cgy = 50;
+        let gOp = 0, cgOp = 0;
+        let tiltRaf = 0;
+
+        function stepTilt() {
+          tiltRaf = 0;
+          cxTilt += (tx - cxTilt) * 0.14;
+          cyTilt += (ty - cyTilt) * 0.14;
+          cgx += (gx - cgx) * 0.16;
+          cgy += (gy - cgy) * 0.16;
+          cgOp += (gOp - cgOp) * 0.14;
+
+          envTilt.style.setProperty('--tilt-x', `${cxTilt.toFixed(2)}deg`);
+          envTilt.style.setProperty('--tilt-y', `${cyTilt.toFixed(2)}deg`);
+          envTilt.style.setProperty('--glare-x', `${cgx.toFixed(1)}%`);
+          envTilt.style.setProperty('--glare-y', `${cgy.toFixed(1)}%`);
+          envTilt.style.setProperty('--glare-op', cgOp.toFixed(3));
+
+          const settled = Math.abs(tx - cxTilt) < 0.03 && Math.abs(ty - cyTilt) < 0.03 && Math.abs(gOp - cgOp) < 0.01;
+          if (!settled) tiltRaf = requestAnimationFrame(stepTilt);
+        }
+
+        envStage.addEventListener('pointermove', (e) => {
+          if (e.pointerType === 'touch' || !envelopeShell.classList.contains('is-opened')) return;
+          const r = envStage.getBoundingClientRect();
+          const nx = Math.max(-1, Math.min(1, ((e.clientX - r.left) / Math.max(1, r.width)) * 2 - 1));
+          const ny = Math.max(-1, Math.min(1, ((e.clientY - r.top) / Math.max(1, r.height)) * 2 - 1));
+          tx = -ny * 6.5;
+          ty = nx * 7.5;
+          gx = ((nx + 1) * 0.5) * 100;
+          gy = ((ny + 1) * 0.5) * 100;
+          gOp = 1;
+          if (!tiltRaf) tiltRaf = requestAnimationFrame(stepTilt);
+        }, { passive: true });
+
+        envStage.addEventListener('pointerleave', () => {
+          tx = 0; ty = 0; gOp = 0;
+          if (!tiltRaf) tiltRaf = requestAnimationFrame(stepTilt);
+        });
+      }
+    })();
   </script>
 </body>
 </html>
