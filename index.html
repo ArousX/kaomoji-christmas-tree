@@ -236,41 +236,85 @@
       50%, 100% { opacity: 0; }
     }
 
+    /* 「种下」按钮外层包裹：支持 React Bits Magnet 磁吸 + StarBorder 胶囊星轨 */
+    .plant-btn-wrap {
+      position: relative;
+      display: inline-flex;
+      transform: translate3d(var(--mag-x, 0px), var(--mag-y, 0px), 0);
+      will-change: transform;
+    }
+
     .plant-submit-btn {
       position: relative;
+      z-index: 1;
+      overflow: hidden;
+      isolation: isolate;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
       height: clamp(42px, 4.4vw, 50px);
-      padding: 0 24px;
+      padding: 0 26px;
       border-radius: 999px;
-      border: 1px solid rgba(255, 240, 200, 0.25);
-      background: var(--accent);
+      border: 1px solid rgba(255, 240, 200, 0.34);
+      background: linear-gradient(135deg, #f3ca7e 0%, #e8b86d 55%, #dfa653 100%);
       color: var(--accent-text);
       font-family: inherit;
       font-size: clamp(15px, 1.35vw, 17px);
       font-weight: 600;
       letter-spacing: 0.08em;
       cursor: pointer;
-      box-shadow: 0 8px 28px -6px rgba(232, 184, 109, 0.45);
-      transition: background-color 0.18s var(--ease-out), transform 0.16s var(--ease-out), box-shadow 0.2s var(--ease-out);
+      box-shadow: 0 8px 28px -6px rgba(232, 184, 109, 0.48), inset 0 1px 0 rgba(255, 250, 232, 0.5);
+      transition: background 0.18s var(--ease-out), transform 0.18s var(--ease-out), box-shadow 0.22s var(--ease-out);
+    }
+
+    /* React Bits GlareHover 斜向高光扫掠 */
+    .plant-glare-band {
+      position: absolute;
+      inset: -40% -60%;
+      background: linear-gradient(
+        115deg,
+        transparent 38%,
+        rgba(255, 255, 255, 0.58) 50%,
+        transparent 62%
+      );
+      transform: translate3d(-110%, 0, 0);
+      transition: transform 0.62s cubic-bezier(0.22, 1, 0.36, 1);
+      pointer-events: none;
+      z-index: 0;
     }
 
     .plant-submit-btn:hover {
-      background: var(--accent-hover);
-      transform: translateY(-1px);
-      box-shadow: 0 12px 32px -6px rgba(232, 184, 109, 0.62);
+      background: linear-gradient(135deg, #f7d48f 0%, #f0c277 55%, #e5b05f 100%);
+      transform: translateY(-1px) scale(1.025);
+      box-shadow: 0 14px 36px -6px rgba(232, 184, 109, 0.68), inset 0 1px 0 rgba(255, 250, 232, 0.65);
+    }
+
+    .plant-submit-btn:hover .plant-glare-band {
+      transform: translate3d(110%, 0, 0);
     }
 
     .plant-submit-btn:active {
-      transform: translateY(0) scale(0.97);
+      transform: translateY(0) scale(0.96);
     }
 
     .plant-btn-spark {
+      position: relative;
+      z-index: 1;
       font-size: 13px;
       line-height: 1;
-      opacity: 0.86;
+      opacity: 0.9;
+      display: inline-block;
+      transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .plant-submit-btn:hover .plant-btn-spark {
+      transform: rotate(90deg) scale(1.22);
+    }
+
+    .plant-btn-label {
+      position: relative;
+      z-index: 1;
     }
 
     .hero-title {
@@ -1145,10 +1189,14 @@
         </span>
         <span class="plant-text" id="plantSuffix">种下圣诞树</span>
       </div>
-      <button class="plant-submit-btn" id="btnPlantTree" type="button">
-        <span class="plant-btn-spark" aria-hidden="true">✦</span>
-        <span>种下</span>
-      </button>
+      <div class="plant-btn-wrap" id="plantBtnWrap">
+        <canvas class="star-border-canvas" id="plantStarCanvas" aria-hidden="true"></canvas>
+        <button class="plant-submit-btn" id="btnPlantTree" type="button">
+          <span class="plant-glare-band" aria-hidden="true"></span>
+          <span class="plant-btn-spark" aria-hidden="true">✦</span>
+          <span class="plant-btn-label">种下</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -2054,7 +2102,11 @@
           size: isBigFore ? rand(18, 28) : (isFlake ? rand(12, 20) : rand(4.5, 9.5)),
           alphaBase: isBigFore ? rand(0.75, 1.0) : rand(0.45, 0.92),
           phase: rand(0, Math.PI * 2),
-          swayAmp: rand(8, 24)
+          swayAmp: rand(8, 24),
+          pushX: 0,
+          pushY: 0,
+          pushVx: 0,
+          pushVy: 0
         });
       }
     }
@@ -2426,6 +2478,12 @@
     let lastY = 0;
     let mouseX = -9999;
     let mouseY = -9999;
+    let mouseActive = false;
+    let mouseVx = 0;
+    let mouseVy = 0;
+    let lastMoveX = -9999;
+    let lastMoveY = -9999;
+    let lastMoveTs = 0;
 
     function easeOutCubic(x) {
       return 1 - Math.pow(1 - x, 3);
@@ -2612,6 +2670,10 @@
         return;
       }
 
+      if (btnPlantTree) {
+        const br = btnPlantTree.getBoundingClientRect();
+        spawnIntroStarBurst(br.left + br.width * 0.5, br.top + br.height * 0.5);
+      }
       samplePromptParticles(recipient);
       if (plantPromptEl) {
         plantPromptEl.classList.add('is-dissolved');
@@ -3145,8 +3207,18 @@
     });
 
     window.addEventListener('mousemove', (e) => {
-      mouseX = e.clientX;
-      mouseY = e.clientY;
+      const nowMs = performance.now();
+      if (mouseActive && lastMoveTs > 0) {
+        const moveDt = Math.max(0.008, (nowMs - lastMoveTs) * 0.001);
+        const rawVx = (e.clientX - lastMoveX) / moveDt;
+        const rawVy = (e.clientY - lastMoveY) / moveDt;
+        mouseVx = Math.max(-1400, Math.min(1400, mouseVx * 0.45 + rawVx * 0.55));
+        mouseVy = Math.max(-1400, Math.min(1400, mouseVy * 0.45 + rawVy * 0.55));
+      }
+      lastMoveX = mouseX = e.clientX;
+      lastMoveY = mouseY = e.clientY;
+      lastMoveTs = nowMs;
+      mouseActive = true;
       if (!pointerDownLeft && !draggingRight) return;
 
       if (pointerDownLeft && !draggingLeft) {
@@ -3174,6 +3246,10 @@
         panX += dx * 0.8;
         panY += dy * 0.55;
       }
+    });
+
+    document.documentElement.addEventListener('mouseleave', () => {
+      mouseActive = false;
     });
 
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -3320,6 +3396,39 @@
 
     let firstSnowTime = 0;
 
+    function renderBurstEffects(dt, timeSec) {
+      if (!burstEffects.length) return;
+      ctx.globalCompositeOperation = 'source-over';
+      for (let i = burstEffects.length - 1; i >= 0; i--) {
+        const b = burstEffects[i];
+        b.life -= dt * b.decay;
+        if (b.life <= 0) {
+          burstEffects.splice(i, 1);
+          continue;
+        }
+        const damp = Math.pow(b.drag, dt * 60);
+        b.vx *= damp;
+        b.vy *= damp;
+        b.vy += b.gravity * dt;
+        const swayX = b.swayAmp ? Math.sin(timeSec * 5.2 + b.phase) * b.swayAmp * dt : 0;
+        b.x += b.vx * dt + swayX;
+        b.y += b.vy * dt;
+        b.rot += b.vrot * dt;
+
+        const scalePop = (b.life > 0.85) ? (1.0 - (b.life - 0.85) * 3.0) : (0.65 + 0.35 * b.life);
+        const ratio = (b.size * Math.max(0.25, scalePop)) / b.sprite.baseFontPx;
+        const dw = b.sprite.w * ratio;
+        const dh = b.sprite.h * ratio;
+
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, b.life * 1.25));
+        ctx.translate(b.x, b.y);
+        if (b.rot !== 0) ctx.rotate(b.rot);
+        ctx.drawImage(b.sprite.canvas, -dw * 0.5, -dh * 0.5, dw, dh);
+        ctx.restore();
+      }
+    }
+
     function animate(now) {
       resizeCanvas();
       const dt = Math.min(0.05, (now - prevTime) * 0.001);
@@ -3372,8 +3481,16 @@
       const cx = viewW * 0.52 + panX;
       const cy = viewH * 0.49;
       const snowOpenAlpha = easeOutCubic(Math.min(1, (timeSec - firstSnowTime) / 0.75));
+      mouseVx *= Math.pow(0.03, dt);
+      mouseVy *= Math.pow(0.03, dt);
+      const mSpd = Math.hypot(mouseVx, mouseVy);
+      const hasMoveDir = mSpd > 28;
+      const mxDir = hasMoveDir ? (mouseVx / mSpd) : 0;
+      const myDir = hasMoveDir ? (mouseVy / mSpd) : 0;
+      const mPerpX = -myDir;
+      const mPerpY = mxDir;
 
-      // 1. 绘制漫天强化 3D 飘雪（发光雪尘 + 立体雪花符号，首屏即展现）
+      // 1. 绘制漫天强化 3D 飘雪（发光雪尘 + 立体雪花符号，含鼠标划过向两侧散开物理）
       if (!isPaper) ctx.globalCompositeOperation = 'lighter';
       for (let i = 0; i < snowNodes.length; i++) {
         const s = snowNodes[i];
@@ -3383,6 +3500,7 @@
           s.y = 360;
           s.x = rand(-540, 540);
           s.z = rand(-480, 480);
+          s.pushX = s.pushY = s.pushVx = s.pushVy = 0;
         }
         if (s.x < -580) s.x = 580;
         if (s.x > 580) s.x = -580;
@@ -3396,17 +3514,57 @@
         const scale = fov / depth;
         const sx = cx + rx * scale;
         const sy = cy - (py * cosP - rz1 * sinP) * scale;
+
+        if (!prefersReducedMotion && mouseActive) {
+          const curX = sx + s.pushX;
+          const curY = sy + s.pushY;
+          const dx = curX - mouseX;
+          const dy = curY - mouseY;
+          const dist = Math.hypot(dx, dy);
+          const repelR = 132;
+          if (dist < repelR) {
+            const strength = 1 - dist / repelR;
+            const rxNorm = dist > 1.5 ? (dx / dist) : ((i % 2 === 0) ? 1 : -1);
+            const ryNorm = dist > 1.5 ? (dy / dist) : -0.25;
+            let partX = rxNorm >= 0 ? 1 : -1;
+            let partY = ryNorm * 0.35;
+            if (hasMoveDir) {
+              const sideSign = (dx * mPerpX + dy * mPerpY) >= 0 ? 1 : -1;
+              partX = mPerpX * sideSign;
+              partY = mPerpY * sideSign;
+            }
+            const force = 2900 * strength * strength;
+            s.pushVx += (rxNorm * 0.65 + partX * 0.85) * force * dt;
+            s.pushVy += (ryNorm * 0.65 + partY * 0.75) * force * dt;
+          }
+        }
+
+        // 弹簧阻尼恢复：让被推开的雪花轻柔回落回原本雪幕
+        s.pushVx += (-s.pushX * 2.1 - s.pushVx * 3.6) * dt;
+        s.pushVy += (-s.pushY * 2.1 - s.pushVy * 3.6) * dt;
+        s.pushX += s.pushVx * dt;
+        s.pushY += s.pushVy * dt;
+        const pushMag = Math.hypot(s.pushX, s.pushY);
+        if (pushMag > 175) {
+          const clampScale = 175 / pushMag;
+          s.pushX *= clampScale;
+          s.pushY *= clampScale;
+        }
+
+        const drawSnowX = sx + s.pushX;
+        const drawSnowY = sy + s.pushY;
+        const energyBoost = pushMag > 2 ? (1 + Math.min(0.28, pushMag * 0.0035)) : 1;
         const twinkle = 0.72 + 0.28 * Math.sin(timeSec * 3.2 + s.phase);
-        ctx.globalAlpha = Math.max(0.18, Math.min(1.0, (460 / depth) * s.alphaBase * twinkle)) * (isPaper ? 0.68 : 0.96) * snowOpenAlpha;
+        ctx.globalAlpha = Math.min(1, Math.max(0.18, Math.min(1.0, (460 / depth) * s.alphaBase * twinkle)) * (isPaper ? 0.68 : 0.96) * snowOpenAlpha * energyBoost);
 
         if (s.isFlake) {
           const ratio = (s.size * scale * 0.62) / s.sprite.baseFontPx;
           const dw = s.sprite.w * ratio;
           const dh = s.sprite.h * ratio;
-          ctx.drawImage(s.sprite.canvas, sx - dw * 0.5, sy - dh * 0.5, dw, dh);
+          ctx.drawImage(s.sprite.canvas, drawSnowX - dw * 0.5, drawSnowY - dh * 0.5, dw, dh);
         } else {
           const diam = Math.max(3.2, s.size * scale * 0.92 * glowMultiplier);
-          ctx.drawImage(s.dotSprite, sx - diam * 0.5, sy - diam * 0.5, diam, diam);
+          ctx.drawImage(s.dotSprite, drawSnowX - diam * 0.5, drawSnowY - diam * 0.5, diam, diam);
         }
       }
 
@@ -3513,6 +3671,7 @@
         }
 
         if (scenePhase === 'seeding') {
+          renderBurstEffects(dt, timeSec);
           ctx.globalCompositeOperation = 'source-over';
           canvas.style.cursor = 'default';
           requestAnimationFrame(animate);
@@ -3768,35 +3927,8 @@
         ctx.drawImage(sp.canvas, drawX - dw * 0.5, drawY - dh * 0.5, dw, dh);
       }
 
-      // 5. 渲染 4 套风格专属点击粒子特效（支持物理重力/浮力、阻尼、摇曳、旋转）
-      for (let i = burstEffects.length - 1; i >= 0; i--) {
-        const b = burstEffects[i];
-        b.life -= dt * b.decay;
-        if (b.life <= 0) {
-          burstEffects.splice(i, 1);
-          continue;
-        }
-        const damp = Math.pow(b.drag, dt * 60);
-        b.vx *= damp;
-        b.vy *= damp;
-        b.vy += b.gravity * dt;
-        const swayX = b.swayAmp ? Math.sin(timeSec * 5.2 + b.phase) * b.swayAmp * dt : 0;
-        b.x += b.vx * dt + swayX;
-        b.y += b.vy * dt;
-        b.rot += b.vrot * dt;
-
-        const scalePop = (b.life > 0.85) ? (1.0 - (b.life - 0.85) * 3.0) : (0.65 + 0.35 * b.life);
-        const ratio = (b.size * Math.max(0.25, scalePop)) / b.sprite.baseFontPx;
-        const dw = b.sprite.w * ratio;
-        const dh = b.sprite.h * ratio;
-
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, Math.min(1, b.life * 1.25));
-        ctx.translate(b.x, b.y);
-        if (b.rot !== 0) ctx.rotate(b.rot);
-        ctx.drawImage(b.sprite.canvas, -dw * 0.5, -dh * 0.5, dw, dh);
-        ctx.restore();
-      }
+      // 5. 渲染点击粒子特效
+      renderBurstEffects(dt, timeSec);
 
       requestAnimationFrame(animate);
     }
@@ -3813,6 +3945,7 @@
       // 1. React Bits Magnet（stiffness: 170, damping: 16 弹簧磁吸交互）
       const magnetNodes = [];
       const magnetTargets = [
+        { el: document.getElementById('plantBtnWrap'), padding: 72, strength: 4.2, maxOffset: 9 },
         { el: document.getElementById('starBorderWrap'), padding: 56, strength: 4.5, maxOffset: 8 }
       ].filter((item) => item.el);
 
@@ -3897,15 +4030,12 @@
         }
       });
 
-      // 2. React Bits StarBorder（沿主按钮圆角矩形轮廓游走的星尘光点轨迹）
-      const starBtnWrap = document.getElementById('starBorderWrap');
-      const starBtn     = document.getElementById('btnWriteCard');
-      const starCanvas  = document.getElementById('starBorderCanvas');
-      if (starBtnWrap && starBtn && starCanvas) {
+      // 2. React Bits StarBorder（共用于「种下」胶囊按钮与「写一张贺卡挂上树」主按钮）
+      function attachStarBorder(starBtn, starCanvas, getRadius) {
+        if (!starBtn || !starCanvas) return;
         const sctx = starCanvas.getContext('2d');
         const BLEED = 22;
-        const RADIUS = 8;
-        let phase = 0;
+        let phase = Math.random() * 120;
         let speedBoost = 0;
         let hovered = false;
         let lastT = performance.now();
@@ -3951,6 +4081,7 @@
         starBtn.addEventListener('pointerleave', () => { hovered = false; });
 
         function renderStarBorder(now) {
+          if (!starBtn.isConnected) return;
           const dt = Math.min(0.05, (now - lastT) * 0.001);
           lastT = now;
 
@@ -3969,13 +4100,13 @@
           sctx.setTransform(sdpr, 0, 0, sdpr, 0, 0);
           sctx.clearRect(0, 0, cw, ch);
 
-          const shape = buildOutline(w, h, RADIUS);
+          const radius = getRadius(w, h);
+          const shape = buildOutline(w, h, radius);
           speedBoost += ((hovered ? 1.0 : 0.0) - speedBoost) * Math.min(1, dt * 6);
           const velocity = 82 + speedBoost * 190;
           phase += velocity * dt;
 
-          const isPaper = document.body.classList.contains('paper-mode');
-          const starRgb = isPaper ? '37, 92, 65' : '255, 240, 195';
+          const starRgb = '255, 240, 195';
 
           // 绘制两颗对称绕边游走的星光尾迹
           for (let starIdx = 0; starIdx < 2; starIdx++) {
@@ -4043,6 +4174,9 @@
 
         requestAnimationFrame(renderStarBorder);
       }
+
+      attachStarBorder(document.getElementById('btnPlantTree'), document.getElementById('plantStarCanvas'), (_, h) => h * 0.5);
+      attachStarBorder(document.getElementById('btnWriteCard'), document.getElementById('starBorderCanvas'), () => 8);
 
       // 3. React Bits TiltedCard（打开信封后鼠标悬停 3D 视差倾斜 + 纸张镜面高光）
       const envStage = document.getElementById('envelopeStage');
