@@ -2379,7 +2379,7 @@
         allCards = [...remoteCards, ...DEFAULT_CARDS];
         mountAllCardsOnTree();
         bindSpritesForTheme();
-        setCloudStatus(`云端已同步 · ${remoteCards.length} 封共享来信`);
+        setCloudStatus('云端已同步 · 共享信箱');
       } catch (err) {
         console.warn('云端同步失败:', err);
         setCloudStatus('云端暂未连通 · 显示默认祝福');
@@ -3144,8 +3144,7 @@
       mountAllCardsOnTree();
       bindSpritesForTheme();
       if (isCloudEnabled) {
-        const cloudCount = allCards.filter((c) => c.custom).length;
-        setCloudStatus(`云端已同步 · ${cloudCount} 封共享来信`);
+        setCloudStatus('云端已同步 · 共享信箱');
       }
       closeAllModals();
       showToast('已从树上摘下这张贺卡');
@@ -3234,8 +3233,7 @@
       treeNodes.push(newNode);
       bindSpritesForTheme();
       if (isCloudEnabled) {
-        const cloudCount = allCards.filter((c) => c.custom).length;
-        setCloudStatus(`云端已同步 · ${cloudCount} 封共享来信`);
+        setCloudStatus('云端已同步 · 共享信箱');
       }
 
       titleEl.value = '';
