@@ -1265,13 +1265,13 @@
         font-size: 16px;
       }
       .bgm-toggle {
-        top: max(42px, calc(env(safe-area-inset-top) + 22px));
+        top: max(48px, calc(env(safe-area-inset-top) + 26px));
         right: max(16px, env(safe-area-inset-right));
       }
       .hero-overlay {
         left: 20px;
         right: auto;
-        top: max(42px, calc(env(safe-area-inset-top) + 22px));
+        top: max(clamp(64px, 9.5dvh, 84px), calc(env(safe-area-inset-top) + 48px));
         bottom: auto;
         transform: none;
         width: min(276px, calc(100vw - 84px));
