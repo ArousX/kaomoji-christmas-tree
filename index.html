@@ -109,15 +109,168 @@
       outline-offset: 2px;
     }
 
-    /* 左侧静谧排版与精简控制区 */
+    /* 左侧静谧排版与精简控制区（初始隐藏，待种下后的粒子树长成时浮现） */
     .hero-overlay {
       position: fixed;
       left: clamp(56px, 6.5vw, 132px);
       top: 50%;
       transform: translateY(-50%);
       z-index: 20;
-      pointer-events: auto;
+      pointer-events: none;
       width: 268px;
+      opacity: 0;
+      transition: opacity 0.25s var(--ease-out);
+    }
+
+    .hero-overlay.is-revealed {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* 首屏开场引导层：纯雪花背景上的「为 ___ 种下圣诞树」+「种下」按钮 */
+    .plant-prompt-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 35;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      pointer-events: none;
+      transition: opacity 0.14s ease-out;
+    }
+
+    .plant-prompt-overlay.is-dissolved {
+      opacity: 0;
+    }
+
+    .plant-row {
+      pointer-events: auto;
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 18px 22px;
+      max-width: min(92vw, 960px);
+    }
+
+    .plant-sentence {
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: center;
+      gap: 6px 10px;
+      font-size: clamp(26px, 3.5vw, 44px);
+      font-weight: 500;
+      line-height: 1.35;
+      letter-spacing: 0.04em;
+      color: var(--text-1);
+      text-shadow: 0 2px 26px rgba(232, 184, 109, 0.16);
+      user-select: none;
+    }
+
+    .plant-input-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 82px;
+      padding: 0 10px 3px;
+      border-bottom: 2px solid rgba(232, 184, 109, 0.56);
+      border-radius: 6px 6px 0 0;
+      background: linear-gradient(180deg, rgba(232, 184, 109, 0.0) 0%, rgba(232, 184, 109, 0.07) 100%);
+      cursor: text;
+      transition: border-color 0.2s var(--ease-out), background 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+    }
+
+    .plant-input-wrap:hover,
+    .plant-input-wrap:focus-within {
+      border-bottom-color: var(--accent);
+      background: linear-gradient(180deg, rgba(232, 184, 109, 0.02) 0%, rgba(232, 184, 109, 0.13) 100%);
+      box-shadow: 0 8px 20px -10px rgba(232, 184, 109, 0.45);
+    }
+
+    .plant-name-input {
+      width: 78px;
+      min-width: 74px;
+      max-width: 260px;
+      border: none;
+      outline: none;
+      background: transparent;
+      color: var(--accent);
+      caret-color: var(--accent);
+      font-family: inherit;
+      font-size: inherit;
+      font-weight: 600;
+      line-height: 1.25;
+      letter-spacing: 0.03em;
+      text-align: center;
+      padding: 0;
+    }
+
+    .plant-name-input:focus-visible {
+      outline: none;
+    }
+
+    .plant-caret {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 2.5px;
+      height: 0.96em;
+      transform: translate(-50%, -52%);
+      border-radius: 2px;
+      background: var(--accent);
+      box-shadow: 0 0 12px rgba(232, 184, 109, 0.72);
+      pointer-events: none;
+      animation: plantCaretBlink 1.05s steps(1, end) infinite;
+    }
+
+    .plant-name-input:focus + .plant-caret,
+    .plant-name-input:not(:placeholder-shown) + .plant-caret {
+      display: none;
+    }
+
+    @keyframes plantCaretBlink {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+
+    .plant-submit-btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      height: clamp(42px, 4.4vw, 50px);
+      padding: 0 24px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 240, 200, 0.25);
+      background: var(--accent);
+      color: var(--accent-text);
+      font-family: inherit;
+      font-size: clamp(15px, 1.35vw, 17px);
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      box-shadow: 0 8px 28px -6px rgba(232, 184, 109, 0.45);
+      transition: background-color 0.18s var(--ease-out), transform 0.16s var(--ease-out), box-shadow 0.2s var(--ease-out);
+    }
+
+    .plant-submit-btn:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 12px 32px -6px rgba(232, 184, 109, 0.62);
+    }
+
+    .plant-submit-btn:active {
+      transform: translateY(0) scale(0.97);
+    }
+
+    .plant-btn-spark {
+      font-size: 13px;
+      line-height: 1;
+      opacity: 0.86;
     }
 
     .hero-title {
@@ -131,8 +284,8 @@
       outline: none;
     }
 
-    /* React Bits: ShinyText 扫光效果（编辑时自动暂停保持清晰） */
-    .hero-title.rb-shiny:not(:focus) {
+    /* React Bits: ShinyText 扫光效果 */
+    .hero-title.rb-shiny {
       background-image: linear-gradient(
         115deg,
         var(--text-1) 0%,
@@ -149,60 +302,20 @@
       animation: rbShinySweep 5.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
     }
 
-    body.paper-mode .hero-title.rb-shiny:not(:focus) {
-      background-image: linear-gradient(
-        115deg,
-        #1f1b16 0%,
-        #1f1b16 40%,
-        #8c6239 50%,
-        #1f1b16 60%,
-        #1f1b16 100%
-      );
-    }
-
     @keyframes rbShinySweep {
       0%, 28% { background-position: 130% 0; }
       72%, 100% { background-position: -110% 0; }
     }
 
-    /* 全页启动帷幕：从中央微光晕开消散（不阻塞交互） */
-    .intro-curtain {
-      position: fixed;
-      inset: 0;
-      z-index: 60;
-      pointer-events: none;
-      background: radial-gradient(
-        circle at 56% 48%,
-        rgba(232, 184, 109, 0.06) 0%,
-        rgba(7, 10, 18, 0.82) 34%,
-        #05070e 72%
-      );
-      animation: introCurtainReveal 1.05s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-      will-change: opacity, transform;
-    }
-
-    @keyframes introCurtainReveal {
-      0% {
-        opacity: 1;
-        transform: scale(1);
-      }
-      65% {
-        opacity: 0.45;
-        transform: scale(1.04);
-      }
-      100% {
-        opacity: 0;
-        transform: scale(1.08);
-        visibility: hidden;
-      }
-    }
-
-    /* React Bits: BlurText 逐段柔焦渐显入场 */
+    /* React Bits: BlurText 逐段柔焦渐显入场（在圣诞树生长落定后触发） */
     .rb-blur-enter {
       opacity: 0;
       filter: blur(8px);
       transform: translate3d(0, 14px, 0);
-      animation: rbBlurIn 0.64s var(--ease-out) var(--rb-delay, 0ms) forwards;
+    }
+
+    .hero-overlay.is-revealed .rb-blur-enter {
+      animation: rbBlurIn 0.62s var(--ease-out) var(--rb-delay, 0ms) forwards;
     }
 
     @keyframes rbBlurIn {
@@ -237,83 +350,10 @@
       color: var(--text-2);
     }
 
-    .hero-section-label {
-      margin-top: 20px;
-      margin-bottom: 8px;
-      font-size: 12px;
-      line-height: 16px;
-      color: var(--text-3);
-    }
-
-    .theme-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-
-    /* React Bits Magnet 磁吸弹簧变量兼容 */
-    .theme-btn {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      height: 36px;
-      padding: 0 12px;
-      border-radius: 8px;
-      border: 1px solid var(--border-hairline);
-      background-color: var(--surface-raised);
-      color: var(--text-2);
-      font-family: inherit;
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
-      transform: translate3d(var(--mag-x, 0px), var(--mag-y, 0px), 0);
-      transition: background-color 0.16s var(--ease-out), border-color 0.16s var(--ease-out), color 0.16s var(--ease-out);
-      text-align: left;
-      will-change: transform;
-    }
-
-    .theme-btn:hover {
-      background-color: var(--surface-hover);
-      color: var(--text-1);
-    }
-
-    .theme-btn:active {
-      transform: translate3d(var(--mag-x, 0px), var(--mag-y, 0px), 0) scale(0.97);
-    }
-
-    .theme-btn.active {
-      background-color: var(--surface-active);
-      border-color: var(--border-strong);
-      color: var(--text-1);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    }
-
-    body.paper-mode .theme-btn {
-      background-color: #efe9df;
-      color: #4a4239;
-    }
-
-    body.paper-mode .theme-btn.active {
-      background-color: #e2d7c4;
-      color: #1f1b16;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
-    }
-
-    .theme-emoji {
-      width: 16px;
-      height: 16px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
-      line-height: 1;
-      flex-shrink: 0;
-    }
-
     /* 主按钮：高对比实体强调色 + React Bits StarBorder 星轨 + Magnet 磁吸 */
     .star-border-wrap {
       position: relative;
-      margin-top: 16px;
+      margin-top: 22px;
       width: 100%;
       transform: translate3d(var(--mag-x, 0px), var(--mag-y, 0px), 0);
       will-change: transform;
@@ -957,8 +997,7 @@
         filter: none !important;
         transform: none !important;
       }
-      .star-border-canvas,
-      .intro-curtain {
+      .star-border-canvas {
         display: none !important;
       }
     }
@@ -1059,6 +1098,12 @@
     }
 
     @media (max-width: 768px) {
+      .plant-sentence {
+        font-size: clamp(22px, 6.2vw, 30px);
+      }
+      .plant-row {
+        gap: 14px;
+      }
       .hero-overlay {
         left: 16px;
         right: 16px;
@@ -1071,48 +1116,53 @@
         background-color: var(--surface-panel);
         border: 1px solid var(--border-hairline);
       }
-      .hero-sub,
-      .hero-section-label {
+      .hero-sub {
         display: none;
       }
     }
   </style>
 </head>
 <body>
-  <div class="intro-curtain" id="introCurtain" aria-hidden="true"></div>
   <canvas id="treeCanvas"></canvas>
 
-  <!-- 左侧静谧排版与精简控制区（融入 React Bits BlurText / ShinyText / Magnet / StarBorder） -->
-  <div class="hero-overlay">
-    <div class="rb-blur-enter" style="--rb-delay:240ms;">
-      <div class="hero-title rb-shiny" contenteditable="true" spellcheck="false">Merry Christmas</div>
+  <!-- 首屏开场交互：在雪花背景上「为 [xxx] 种下圣诞树」 -->
+  <div class="plant-prompt-overlay" id="plantPromptOverlay">
+    <div class="plant-row" id="plantRow">
+      <div class="plant-sentence" id="plantSentence">
+        <span class="plant-text" id="plantPrefix">为</span>
+        <span class="plant-input-wrap" id="plantInputWrap">
+          <input
+            type="text"
+            class="plant-name-input"
+            id="plantNameInput"
+            maxlength="16"
+            autocomplete="off"
+            spellcheck="false"
+            aria-label="填写名字"
+            placeholder=" "
+          />
+          <span class="plant-caret" id="plantCaret" aria-hidden="true"></span>
+        </span>
+        <span class="plant-text" id="plantSuffix">种下圣诞树</span>
+      </div>
+      <button class="plant-submit-btn" id="btnPlantTree" type="button">
+        <span class="plant-btn-spark" aria-hidden="true">✦</span>
+        <span>种下</span>
+      </button>
     </div>
-    <div class="hero-kaomoji rb-blur-enter" style="--rb-delay:400ms;" contenteditable="true" spellcheck="false"><span class="hero-script-sub">to you</span> (=^•ω•^=) ♡</div>
-    <div class="hero-sub rb-blur-enter" style="--rb-delay:520ms;">
+  </div>
+
+  <!-- 左侧极简控制区（在粒子飞升变成圣诞树后优雅浮现） -->
+  <div class="hero-overlay" id="heroOverlay">
+    <div class="rb-blur-enter" style="--rb-delay:0ms;">
+      <div class="hero-title rb-shiny">Merry Christmas</div>
+    </div>
+    <div class="hero-kaomoji rb-blur-enter" id="heroRecipientLine" style="--rb-delay:120ms;"><span class="hero-script-sub">to <span id="heroRecipientName">you</span></span> (=^•ω•^=) ♡</div>
+    <div class="hero-sub rb-blur-enter" style="--rb-delay:220ms;">
       点击树身或信封拆开祝福，拖拽可 360° 旋转
     </div>
 
-    <div class="hero-section-label rb-blur-enter" style="--rb-delay:620ms;">树影风格</div>
-    <div class="theme-grid rb-blur-enter" style="--rb-delay:700ms;">
-      <button class="theme-btn active" data-theme="0">
-        <span class="theme-emoji" aria-hidden="true">🎄</span>
-        <span>夜色霓虹</span>
-      </button>
-      <button class="theme-btn" data-theme="1">
-        <span class="theme-emoji" aria-hidden="true">📖</span>
-        <span>纸本手账</span>
-      </button>
-      <button class="theme-btn" data-theme="2">
-        <span class="theme-emoji" aria-hidden="true">🌸</span>
-        <span>粉金物语</span>
-      </button>
-      <button class="theme-btn" data-theme="3">
-        <span class="theme-emoji" aria-hidden="true">❄️</span>
-        <span>极光冰晶</span>
-      </button>
-    </div>
-
-    <div class="star-border-wrap rb-blur-enter" id="starBorderWrap" style="--rb-delay:820ms;">
+    <div class="star-border-wrap rb-blur-enter" id="starBorderWrap" style="--rb-delay:300ms;">
       <canvas class="star-border-canvas" id="starBorderCanvas" aria-hidden="true"></canvas>
       <button class="write-card-btn" id="btnWriteCard">
         <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3 7 12 13 21 7"/></svg>
@@ -1120,7 +1170,7 @@
       </button>
     </div>
 
-    <div class="action-row rb-blur-enter" style="--rb-delay:920ms;">
+    <div class="action-row rb-blur-enter" style="--rb-delay:380ms;">
       <button class="action-btn active" id="btnAutoRotate">
         <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
         <span>自转</span>
@@ -1135,7 +1185,7 @@
       </button>
     </div>
 
-    <div class="cloud-sync-status rb-blur-enter" id="cloudSyncStatus" style="--rb-delay:1020ms;">
+    <div class="cloud-sync-status rb-blur-enter" id="cloudSyncStatus" style="--rb-delay:460ms;">
       <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
       <span id="cloudSyncText">正在连接共享信箱</span>
     </div>
@@ -2330,12 +2380,28 @@
     }
 
     // =========================================================================
-    // 鼠标拖拽 360° 自由旋转 + 惯性 + 滚轮缩放 + 右键平移 + 点击放飞烟花
+    // 阶段式启动动效：纯雪开场 -> 文字化粉入地 -> 粒子飞升成树 -> 极简界面浮现
     // =========================================================================
     const prefersReducedMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-    let introElapsed = prefersReducedMotion ? 2.5 : 0;
-    let introComplete = prefersReducedMotion;
-    let introStarBurstDone = prefersReducedMotion;
+    const plantPromptEl  = document.getElementById('plantPromptOverlay');
+    const plantSentenceEl = document.getElementById('plantSentence');
+    const plantInputWrapEl = document.getElementById('plantInputWrap');
+    const plantNameInput = document.getElementById('plantNameInput');
+    const btnPlantTree   = document.getElementById('btnPlantTree');
+    const heroOverlayEl  = document.getElementById('heroOverlay');
+    const heroRecipientNameEl = document.getElementById('heroRecipientName');
+
+    // scenePhase: 'prompt' | 'seeding' | 'growing' | 'ready'
+    let scenePhase = 'prompt';
+    let phaseElapsed = 0;
+    let introElapsed = 0;
+    let introComplete = false;
+    let introStarBurstDone = false;
+    let heroRevealed = false;
+
+    const seedParticles = [];
+    const risingParticles = [];
+    const groundRipples = [];
 
     let yaw = prefersReducedMotion ? 0.0 : 0.72;
     let pitch = 0.08;
@@ -2365,10 +2431,201 @@
       return 1 - Math.pow(1 - x, 3);
     }
 
+    function easeInCubic(x) {
+      return x * x * x;
+    }
+
     function easeOutBack(x) {
       const c1 = 1.70158;
       const c3 = c1 + 1;
       return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
+    }
+
+    // 自适应输入框宽度，输入名字时句子始终紧凑居中
+    const measureCtx = document.createElement('canvas').getContext('2d');
+    function syncPlantInputWidth() {
+      if (!plantNameInput) return;
+      const val = plantNameInput.value;
+      if (!val) {
+        plantNameInput.style.width = '78px';
+        return;
+      }
+      const cs = getComputedStyle(plantNameInput);
+      measureCtx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+      const w = Math.ceil(measureCtx.measureText(val).width);
+      plantNameInput.style.width = `${Math.max(78, Math.min(260, w + 26))}px`;
+    }
+
+    if (plantInputWrapEl && plantNameInput) {
+      plantInputWrapEl.addEventListener('click', () => plantNameInput.focus());
+      plantNameInput.addEventListener('input', syncPlantInputWidth);
+      plantNameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          startPlantingSequence();
+        }
+      });
+      // 页面打开后自动聚焦输入框，方便直接键盘输入
+      setTimeout(() => {
+        if (scenePhase === 'prompt') plantNameInput.focus({ preventScroll: true });
+      }, 120);
+    }
+
+    function getTreeGroundScreenPos() {
+      const fov = Math.min(viewW || window.innerWidth || 1280, viewH || window.innerHeight || 720) * 0.98;
+      const cx = (viewW || window.innerWidth || 1280) * 0.52 + panX;
+      const cy = (viewH || window.innerHeight || 720) * 0.49;
+      const py = -132 - panY;
+      const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
+      const depth = py * sinP + camDist;
+      const scale = fov / Math.max(40, depth);
+      return {
+        gx: cx,
+        gy: cy - (py * cosP) * scale
+      };
+    }
+
+    function samplePromptParticles(recipient) {
+      seedParticles.length = 0;
+      const rowEl = document.getElementById('plantRow');
+      const prefixEl = document.getElementById('plantPrefix');
+      const suffixEl = document.getElementById('plantSuffix');
+      if (!rowEl || !prefixEl || !suffixEl || !plantNameInput || !btnPlantTree) return;
+
+      const { gx, gy } = getTreeGroundScreenPos();
+      const rowRect = rowEl.getBoundingClientRect();
+      const offW = Math.max(100, Math.ceil(rowRect.width + 20));
+      const offH = Math.max(60, Math.ceil(rowRect.height + 20));
+      const off = document.createElement('canvas');
+      off.width = offW;
+      off.height = offH;
+      const octx = off.getContext('2d');
+      octx.textBaseline = 'middle';
+      octx.textAlign = 'center';
+
+      const drawElText = (el, text, color) => {
+        const r = el.getBoundingClientRect();
+        const cs = getComputedStyle(el);
+        octx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+        octx.fillStyle = color;
+        octx.fillText(text, r.left - rowRect.left + r.width * 0.5, r.top - rowRect.top + r.height * 0.5);
+      };
+
+      drawElText(prefixEl, '为', '#f3f5f8');
+      if (recipient) {
+        drawElText(plantNameInput, recipient, '#e8b86d');
+      } else {
+        // 未填写名字时将输入框亮线一起化粉
+        const ir = plantInputWrapEl.getBoundingClientRect();
+        octx.fillStyle = '#e8b86d';
+        octx.fillRect(ir.left - rowRect.left + 8, ir.bottom - rowRect.top - 4, Math.max(24, ir.width - 16), 3);
+      }
+      drawElText(suffixEl, '种下圣诞树', '#f3f5f8');
+
+      // 把「种下」按钮文字与外框微粒化
+      const br = btnPlantTree.getBoundingClientRect();
+      const bcs = getComputedStyle(btnPlantTree);
+      octx.font = `${bcs.fontWeight} ${bcs.fontSize} ${bcs.fontFamily}`;
+      octx.fillStyle = '#e8b86d';
+      octx.fillText('种下', br.left - rowRect.left + br.width * 0.5, br.top - rowRect.top + br.height * 0.5);
+
+      const img = octx.getImageData(0, 0, offW, offH).data;
+      const pts = [];
+      const step = 3;
+      for (let y = 0; y < offH; y += step) {
+        for (let x = 0; x < offW; x += step) {
+          const idx = (y * offW + x) * 4;
+          const a = img[idx + 3];
+          if (a > 75) {
+            const isGold = img[idx] > 215 && img[idx + 1] > 160 && img[idx + 2] < 150;
+            pts.push({
+              sx: rowRect.left + x,
+              sy: rowRect.top + y,
+              isGold
+            });
+          }
+        }
+      }
+
+      // 均匀抽样到约 320 颗，保证全平台丝滑 60fps
+      const maxCount = 320;
+      const stride = Math.max(1, pts.length / maxCount);
+      for (let f = 0; f < pts.length; f += stride) {
+        const pt = pts[Math.floor(f)];
+        const normX = Math.max(0, Math.min(1, (pt.sx - rowRect.left) / Math.max(1, rowRect.width)));
+        const color = pt.isGold ? '#e8b86d' : (Math.random() < 0.35 ? '#ffe7a8' : '#f3f5f8');
+        seedParticles.push({
+          x: pt.sx,
+          y: pt.sy,
+          startX: pt.sx,
+          startY: pt.sy,
+          driftX: rand(-36, 36),
+          driftY: rand(-38, 12),
+          ctrlOffsetX: rand(-90, 90),
+          targetX: gx + rand(-34, 34),
+          targetY: gy + rand(-8, 10),
+          delay: normX * 0.16 + rand(0, 0.06),
+          dur: rand(0.56, 0.74),
+          size: rand(3.2, 6.2),
+          sprite: getDotSprite(color, false),
+          buried: false,
+          alpha: 1
+        });
+      }
+    }
+
+    function spawnRisingSpiritParticles() {
+      risingParticles.length = 0;
+      const theme = THEMES[currentThemeIdx];
+      const total = 150;
+      for (let i = 0; i < total; i++) {
+        const branch = (i % 2 === 0) ? 0 : Math.PI;
+        const col = (i % 4 === 0) ? theme.starColor : theme.palette[i % theme.palette.length];
+        risingParticles.push({
+          branch,
+          angleOffset: rand(-0.35, 0.35),
+          delay: (i / total) * 0.62 + rand(0, 0.08),
+          dur: rand(0.82, 1.15),
+          size: rand(4.0, 8.2),
+          radialJitter: rand(-14, 14),
+          sprite: getDotSprite(col, false)
+        });
+      }
+    }
+
+    function startPlantingSequence() {
+      if (scenePhase !== 'prompt') return;
+      const recipient = (plantNameInput ? plantNameInput.value : '').trim();
+      if (heroRecipientNameEl) {
+        heroRecipientNameEl.textContent = recipient || 'you';
+      }
+
+      if (prefersReducedMotion) {
+        if (plantPromptEl) plantPromptEl.remove();
+        introComplete = true;
+        introStarBurstDone = true;
+        scenePhase = 'ready';
+        if (heroOverlayEl && !heroRevealed) {
+          heroRevealed = true;
+          heroOverlayEl.classList.add('is-revealed');
+        }
+        return;
+      }
+
+      samplePromptParticles(recipient);
+      if (plantPromptEl) {
+        plantPromptEl.classList.add('is-dissolved');
+        plantPromptEl.style.pointerEvents = 'none';
+        setTimeout(() => { if (plantPromptEl && plantPromptEl.parentNode) plantPromptEl.remove(); }, 260);
+      }
+
+      scenePhase = 'seeding';
+      phaseElapsed = 0;
+      groundRipples.length = 0;
+    }
+
+    if (btnPlantTree) {
+      btnPlantTree.addEventListener('click', startPlantingSequence);
     }
 
     function spawnIntroStarBurst(sx, sy) {
@@ -2679,6 +2936,7 @@
     // 3. 点到圣诞树任意部位 -> 随机抽一张信封从点击点弹出并拆开
     // 4. 点到空白星空 -> 仅展示粒子特效，不弹弹窗
     function handleCanvasClick(sx, sy) {
+      if (scenePhase !== 'ready') return;
       spawnBurst(sx, sy);
 
       // 优先从前景到背景检测是否点中了树上挂着的贺卡
@@ -2867,6 +3125,7 @@
     });
 
     canvas.addEventListener('mousedown', (e) => {
+      if (scenePhase !== 'ready') return;
       if (e.button === 0) {
         pointerDownLeft = true;
         draggingLeft = false;
@@ -2964,17 +3223,6 @@
     // =========================================================================
     // UI 控制 & 圣诞八音盒
     // =========================================================================
-    document.querySelectorAll('.theme-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.theme-btn').forEach((b) => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentThemeIdx = parseInt(btn.dataset.theme, 10);
-        document.body.classList.toggle('paper-mode', THEMES[currentThemeIdx].paper);
-        bindSpritesForTheme();
-        rebuildBackgroundCache(viewW, viewH);
-      });
-    });
-
     const btnAutoRotate = document.getElementById('btnAutoRotate');
     btnAutoRotate.addEventListener('click', () => {
       autoRotate = !autoRotate;
@@ -3070,32 +3318,45 @@
     const renderQueue = [];
     let prevTime = performance.now();
 
+    let firstSnowTime = 0;
+
     function animate(now) {
       resizeCanvas();
       const dt = Math.min(0.05, (now - prevTime) * 0.001);
       prevTime = now;
       const timeSec = now * 0.001;
+      if (!firstSnowTime) firstSnowTime = timeSec;
 
-      if (!introComplete) {
+      if (scenePhase === 'seeding') {
+        phaseElapsed += dt;
+      } else if (scenePhase === 'growing') {
         introElapsed += dt;
-        if (introElapsed >= 1.95) {
+        if (!heroRevealed && introElapsed >= 1.48) {
+          heroRevealed = true;
+          if (heroOverlayEl) heroOverlayEl.classList.add('is-revealed');
+        }
+        if (introElapsed >= 2.08) {
           introComplete = true;
-          const ic = document.getElementById('introCurtain');
-          if (ic) ic.remove();
+          scenePhase = 'ready';
+          seedParticles.length = 0;
+          risingParticles.length = 0;
+          groundRipples.length = 0;
         }
       }
 
-      if (!draggingLeft) {
-        if (autoRotate) {
-          velYaw += (-autoSpeed - velYaw) * Math.min(1, dt * (introComplete ? 2.4 : 2.1));
-        } else {
-          velYaw *= Math.pow(0.05, dt);
+      if (scenePhase === 'growing' || scenePhase === 'ready') {
+        if (!draggingLeft) {
+          if (autoRotate) {
+            velYaw += (-autoSpeed - velYaw) * Math.min(1, dt * (introComplete ? 2.4 : 2.1));
+          } else {
+            velYaw *= Math.pow(0.05, dt);
+          }
+          velPitch *= Math.pow(0.05, dt);
+          yaw += velYaw * dt;
+          pitch = Math.max(-0.55, Math.min(1.15, pitch + velPitch * dt));
         }
-        velPitch *= Math.pow(0.05, dt);
-        yaw += velYaw * dt;
-        pitch = Math.max(-0.55, Math.min(1.15, pitch + velPitch * dt));
+        camDist += (targetDist - camDist) * Math.min(1, dt * (introComplete ? 9.5 : 3.4));
       }
-      camDist += (targetDist - camDist) * Math.min(1, dt * (introComplete ? 9.5 : 3.6));
 
       const theme = THEMES[currentThemeIdx];
       const isPaper = theme.paper;
@@ -3110,9 +3371,9 @@
       const fov = Math.min(viewW, viewH) * 0.98;
       const cx = viewW * 0.52 + panX;
       const cy = viewH * 0.49;
-      const snowIntroAlpha = introComplete ? 1 : easeOutCubic(Math.min(1, introElapsed / 0.85));
+      const snowOpenAlpha = easeOutCubic(Math.min(1, (timeSec - firstSnowTime) / 0.75));
 
-      // 1. 绘制漫天强化 3D 飘雪（发光雪尘 + 立体雪花符号，全贴图加速）
+      // 1. 绘制漫天强化 3D 飘雪（发光雪尘 + 立体雪花符号，首屏即展现）
       if (!isPaper) ctx.globalCompositeOperation = 'lighter';
       for (let i = 0; i < snowNodes.length; i++) {
         const s = snowNodes[i];
@@ -3136,7 +3397,7 @@
         const sx = cx + rx * scale;
         const sy = cy - (py * cosP - rz1 * sinP) * scale;
         const twinkle = 0.72 + 0.28 * Math.sin(timeSec * 3.2 + s.phase);
-        ctx.globalAlpha = Math.max(0.18, Math.min(1.0, (460 / depth) * s.alphaBase * twinkle)) * (isPaper ? 0.68 : 0.96) * snowIntroAlpha;
+        ctx.globalAlpha = Math.max(0.18, Math.min(1.0, (460 / depth) * s.alphaBase * twinkle)) * (isPaper ? 0.68 : 0.96) * snowOpenAlpha;
 
         if (s.isFlake) {
           const ratio = (s.size * scale * 0.62) / s.sprite.baseFontPx;
@@ -3146,6 +3407,116 @@
         } else {
           const diam = Math.max(3.2, s.size * scale * 0.92 * glowMultiplier);
           ctx.drawImage(s.dotSprite, sx - diam * 0.5, sy - diam * 0.5, diam, diam);
+        }
+      }
+
+      // 纯雪开场提示阶段：仅渲染飘雪星空
+      if (scenePhase === 'prompt') {
+        ctx.globalCompositeOperation = 'source-over';
+        canvas.style.cursor = 'default';
+        requestAnimationFrame(animate);
+        return;
+      }
+
+      // 1.5 阶段 A/B 衔接：文字化为粒子钻入地面 + 地面入土光晕涟漪
+      if (scenePhase === 'seeding' || groundRipples.length > 0) {
+        if (!isPaper) ctx.globalCompositeOperation = 'lighter';
+        const { gx, gy } = getTreeGroundScreenPos();
+        let buriedNow = 0;
+
+        for (let i = 0; i < seedParticles.length; i++) {
+          const p = seedParticles[i];
+          if (p.buried) {
+            buriedNow++;
+            continue;
+          }
+          const localT = phaseElapsed - p.delay;
+          if (localT < 0) {
+            ctx.globalAlpha = 0.92;
+            const d = p.size * 1.1;
+            ctx.drawImage(p.sprite, p.startX - d * 0.5, p.startY - d * 0.5, d, d);
+            continue;
+          }
+          const burstEnd = 0.16;
+          const bx = p.startX + p.driftX;
+          const by = p.startY + p.driftY;
+          if (localT < burstEnd) {
+            const u = easeOutCubic(localT / burstEnd);
+            p.x = p.startX + p.driftX * u;
+            p.y = p.startY + p.driftY * u;
+            p.alpha = 1;
+          } else {
+            const diveT = Math.min(1, (localT - burstEnd) / p.dur);
+            const e = easeInCubic(diveT) * 0.65 + diveT * 0.35;
+            const inv = 1 - e;
+            const ctrlX = (bx + p.targetX) * 0.5 + p.ctrlOffsetX;
+            const ctrlY = Math.min(by, p.targetY) + Math.abs(p.targetY - by) * 0.35;
+            p.x = inv * inv * bx + 2 * inv * e * ctrlX + e * e * p.targetX;
+            p.y = inv * inv * by + 2 * inv * e * ctrlY + e * e * p.targetY;
+            p.alpha = diveT > 0.82 ? Math.max(0, 1 - (diveT - 0.82) / 0.18) : 1;
+            if (diveT >= 1) {
+              p.buried = true;
+              buriedNow++;
+              if (groundRipples.length < 48 && Math.random() < 0.24) {
+                groundRipples.push({
+                  x: p.targetX,
+                  y: p.targetY,
+                  r: 3,
+                  maxR: rand(26, 68),
+                  life: 1.0,
+                  decay: rand(1.15, 1.85)
+                });
+              }
+              continue;
+            }
+          }
+          ctx.globalAlpha = p.alpha * 0.96;
+          const d = p.size * 1.8;
+          ctx.drawImage(p.sprite, p.x - d * 0.5, p.y - d * 0.5, d, d);
+        }
+
+        // 地面汇入光斑随落土粒子逐渐亮起，并在成长阶段渐隐
+        const buryRatio = seedParticles.length ? (buriedNow / seedParticles.length) : 1;
+        const glowFade = (scenePhase === 'seeding')
+          ? buryRatio
+          : Math.max(0, 1 - introElapsed / 0.75);
+        if (glowFade > 0.01) {
+          const seedSprite = getDotSprite('#e8b86d', false);
+          ctx.globalAlpha = 0.72 * glowFade;
+          ctx.drawImage(seedSprite, gx - 90, gy - 32, 180, 64);
+        }
+
+        for (let i = groundRipples.length - 1; i >= 0; i--) {
+          const rp = groundRipples[i];
+          rp.life -= dt * rp.decay;
+          if (rp.life <= 0) {
+            groundRipples.splice(i, 1);
+            continue;
+          }
+          const radius = rp.r + (rp.maxR - rp.r) * easeOutCubic(1 - rp.life);
+          ctx.save();
+          ctx.globalAlpha = rp.life * 0.55;
+          ctx.strokeStyle = '#ffd98a';
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.ellipse(rp.x, rp.y, radius, radius * 0.34, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        if (scenePhase === 'seeding' && (phaseElapsed >= 0.94 || (seedParticles.length > 0 && buriedNow === seedParticles.length && phaseElapsed >= 0.76))) {
+          scenePhase = 'growing';
+          introElapsed = 0;
+          introComplete = false;
+          introStarBurstDone = false;
+          spawnRisingSpiritParticles();
+        }
+
+        if (scenePhase === 'seeding') {
+          ctx.globalCompositeOperation = 'source-over';
+          canvas.style.cursor = 'default';
+          requestAnimationFrame(animate);
+          return;
         }
       }
 
@@ -3159,8 +3530,8 @@
         let spIntroAlpha = 1;
         let spIntroScale = 1;
         if (!introComplete) {
-          const spStart = sp.kind === 'ground' ? 0.04 : (0.08 + (sp.param || 0) * 0.84);
-          const p = Math.max(0, Math.min(1, (introElapsed - spStart) / 0.34));
+          const spStart = sp.kind === 'ground' ? 0.02 : (0.10 + (sp.param || 0) * 1.06);
+          const p = Math.max(0, Math.min(1, (introElapsed - spStart) / 0.36));
           if (p <= 0) continue;
           spIntroAlpha = easeOutCubic(p);
           spIntroScale = 0.35 + 0.65 * easeOutBack(p);
@@ -3189,6 +3560,39 @@
         const diam = Math.max(2.5, sp.size * scale * 0.65 * glowMultiplier) * spIntroScale;
         ctx.globalAlpha = Math.min(1, (360 / depth) * twinkle * (isPaper ? 0.45 : 0.75) * glowMultiplier) * spIntroAlpha;
         ctx.drawImage(sp.sprite, sx - diam * 0.5, sy - diam * 0.5, diam, diam);
+      }
+
+      // 2.5 阶段 B：从地面破土飞升、沿树体螺旋向上聚合成树的发光尾迹粒子
+      if (scenePhase === 'growing' && risingParticles.length > 0) {
+        if (!isPaper) ctx.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < risingParticles.length; i++) {
+          const rp = risingParticles[i];
+          const u = (introElapsed - rp.delay) / rp.dur;
+          if (u <= 0 || u >= 1.12) continue;
+
+          for (let k = 3; k >= 0; k--) {
+            const uk = Math.max(0, Math.min(1, u - k * 0.032));
+            const e = easeOutCubic(uk);
+            const yy = -132 + e * 336;
+            const rr = (1 - e) * 192 + 8 + rp.radialJitter * (1 - e * 0.7);
+            const ang = rp.branch + e * 4.8 * Math.PI * 2 + rp.angleOffset;
+            const px = Math.cos(ang) * rr;
+            const pz = Math.sin(ang) * rr;
+            const py = yy - panY;
+            const rx = px * cosY - pz * sinY;
+            const rz1 = px * sinY + pz * cosY;
+            const depth = py * sinP + rz1 * cosP + camDist;
+            if (depth <= 25) continue;
+            const scale = fov / depth;
+            const sx = cx + rx * scale;
+            const sy = cy - (py * cosP - rz1 * sinP) * scale;
+            const fadeOut = u > 0.85 ? Math.max(0, 1 - (u - 0.85) / 0.27) : 1;
+            const tailWeight = 1 - k * 0.24;
+            const d = rp.size * scale * 1.45 * tailWeight;
+            ctx.globalAlpha = 0.88 * tailWeight * fadeOut;
+            ctx.drawImage(rp.sprite, sx - d * 0.5, sy - d * 0.5, d, d);
+          }
+        }
       }
 
       ctx.globalCompositeOperation = 'source-over';
@@ -3232,25 +3636,29 @@
         const sx = cx + rx * scale;
         const sy = cy - (py * cosP - rz1 * sinP) * scale;
 
-        if (n.type === 'kaomoji' && !draggingLeft) {
-          const dxm = sx - mouseX, dym = sy - mouseY;
-          if (dxm * dxm + dym * dym < 2300 && n.bounce < 0.2) {
-            n.bounce = 0.85;
-            n.blinking = true;
-            n.blinkTimer = 0.35;
+        if (scenePhase === 'ready') {
+          if (n.type === 'kaomoji' && !draggingLeft) {
+            const dxm = sx - mouseX, dym = sy - mouseY;
+            if (dxm * dxm + dym * dym < 2300 && n.bounce < 0.2) {
+              n.bounce = 0.85;
+              n.blinking = true;
+              n.blinkTimer = 0.35;
+            }
+          } else if (n.type === 'cardOrnament') {
+            const hitR = Math.max(22, Math.min(42, 27 * scale * sizeMultiplier));
+            const isHover = !draggingLeft && ((sx - mouseX) ** 2 + (sy - mouseY) ** 2 <= hitR * hitR);
+            if (isHover) hoveringAnyCard = true;
+            const targetHover = isHover ? 1.32 : 1.0;
+            n.hoverScale += (targetHover - n.hoverScale) * Math.min(1, dt * 12);
           }
-        } else if (n.type === 'cardOrnament') {
-          const hitR = Math.max(22, Math.min(42, 27 * scale * sizeMultiplier));
-          const isHover = !draggingLeft && ((sx - mouseX) ** 2 + (sy - mouseY) ** 2 <= hitR * hitR);
-          if (isHover) hoveringAnyCard = true;
-          const targetHover = isHover ? 1.32 : 1.0;
-          n.hoverScale += (targetHover - n.hoverScale) * Math.min(1, dt * 12);
         }
 
         renderQueue.push({ node: n, sx, sy, depth, scale });
       }
 
-      if (!draggingLeft && !draggingRight) {
+      if (scenePhase !== 'ready') {
+        canvas.style.cursor = 'default';
+      } else if (!draggingLeft && !draggingRight) {
         canvas.style.cursor = hoveringAnyCard ? 'pointer' : 'grab';
       }
 
@@ -3267,19 +3675,19 @@
         let drawY = sy;
 
         if (!introComplete) {
-          let tStart = 0.08;
-          let tDur = 0.40;
+          let tStart = 0.12;
+          let tDur = 0.42;
           if (node.type === 'topStar' || node.type === 'starHalo') {
-            tStart = 0.88;
+            tStart = 1.08;
             tDur = 0.46;
           } else if (node.type === 'cardOrnament') {
             const hNorm = Math.max(0, Math.min(1, (node.y + 135) / 315));
-            tStart = 1.00 + hNorm * 0.36;
+            tStart = 1.22 + hNorm * 0.38;
             tDur = 0.42;
           } else {
             const hNorm = Math.max(0, Math.min(1, (node.y + 135) / 315));
-            tStart = 0.08 + hNorm * 0.80;
-            tDur = 0.40;
+            tStart = 0.12 + hNorm * 0.96;
+            tDur = 0.42;
           }
           const p = Math.max(0, Math.min(1, (introElapsed - tStart) / tDur));
           if (p <= 0) continue;
@@ -3289,8 +3697,8 @@
           if (node.type === 'cardOrnament') {
             drawY = sy - (1 - introEase) * 14;
           } else if (node.type !== 'topStar') {
-            drawX = cx + (sx - cx) * (0.76 + 0.24 * introEase);
-            drawY = sy + (1 - introEase) * 16;
+            drawX = cx + (sx - cx) * (0.68 + 0.32 * introEase);
+            drawY = sy + (1 - introEase) * 20;
           }
         }
 
@@ -3299,7 +3707,7 @@
         const sp = node.blinking ? node.spriteB : node.spriteA;
 
         if (node.type === 'topStar') {
-          if (!introStarBurstDone && introElapsed >= 0.90) {
+          if (!introStarBurstDone && introElapsed >= 1.12) {
             introStarBurstDone = true;
             spawnIntroStarBurst(drawX, drawY);
           }
@@ -3405,10 +3813,7 @@
       // 1. React Bits Magnet（stiffness: 170, damping: 16 弹簧磁吸交互）
       const magnetNodes = [];
       const magnetTargets = [
-        { el: document.getElementById('starBorderWrap'), padding: 56, strength: 4.5, maxOffset: 8 },
-        ...Array.from(document.querySelectorAll('.theme-btn')).map((el) => ({
-          el, padding: 34, strength: 6.5, maxOffset: 4.5
-        }))
+        { el: document.getElementById('starBorderWrap'), padding: 56, strength: 4.5, maxOffset: 8 }
       ].filter((item) => item.el);
 
       let ptrX = -9999, ptrY = -9999, ptrActive = false;
