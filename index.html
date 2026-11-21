@@ -1118,6 +1118,34 @@
       animation: bgmPulseGlow 2.6s ease-out infinite;
     }
 
+    .bgm-toggle.is-waiting {
+      color: var(--accent);
+      border-color: rgba(229, 185, 107, 0.62);
+      animation: bgmPulseGlow 1.9s ease-out infinite;
+    }
+
+    .bgm-hint {
+      position: absolute;
+      right: 42px;
+      top: 50%;
+      transform: translateY(-50%);
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(14, 18, 28, 0.78);
+      border: 1px solid rgba(229, 185, 107, 0.35);
+      color: var(--accent);
+      font-size: 11.5px;
+      line-height: 16px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s var(--ease-out);
+    }
+
+    .bgm-toggle.is-waiting .bgm-hint {
+      opacity: 1;
+    }
+
     .bgm-toggle .bgm-slash {
       opacity: 1;
       transition: opacity 0.2s var(--ease-out);
@@ -1328,8 +1356,9 @@
   </style>
 </head>
 <body>
-  <audio id="bgmAudio" src="bgm.mp3" preload="auto" autoplay loop playsinline webkit-playsinline></audio>
+  <audio id="bgmAudio" src="bgm.mp3" preload="auto" loop playsinline webkit-playsinline></audio>
   <button class="bgm-toggle" id="bgmToggle" type="button" title="背景音乐" aria-label="切换背景音乐">
+    <span class="bgm-hint" id="bgmHint">点按开声 ♪</span>
     <svg class="ui-icon bgm-icon-note" viewBox="0 0 24 24" aria-hidden="true">
       <path d="M9 18V5l12-2v13"/>
       <circle cx="6" cy="18" r="3"/>
@@ -2825,6 +2854,7 @@
     }
 
     function startPlantingSequence() {
+      if (typeof window.__unlockBgm === 'function') window.__unlockBgm();
       if (scenePhase !== 'prompt') return;
       const recipient = (plantNameInput ? plantNameInput.value : '').trim();
       if (heroRecipientNameEl) {
@@ -4357,79 +4387,94 @@
       const bgmBtn = document.getElementById('bgmToggle');
       if (!bgm) return;
 
-      bgm.volume = 0.52;
+      bgm.volume = 0.85;
       let userPaused = false;
+      let bgmUnlocked = false;
       let gestureBound = false;
 
-      function syncBgmUi() {
+      function syncBgmUi(blockedWaiting = false) {
         if (!bgmBtn) return;
         const playing = !bgm.paused && !bgm.ended;
+        if (playing) bgmUnlocked = true;
         bgmBtn.classList.toggle('is-playing', playing);
+        bgmBtn.classList.toggle('is-waiting', !playing && !userPaused && blockedWaiting);
         bgmBtn.setAttribute('aria-pressed', playing ? 'true' : 'false');
       }
 
       function removeUnlockListeners() {
         if (!gestureBound) return;
         gestureBound = false;
-        window.removeEventListener('pointerdown', onFirstGesture, true);
-        window.removeEventListener('touchstart', onFirstGesture, true);
-        window.removeEventListener('keydown', onFirstGesture, true);
+        window.removeEventListener('touchend', onFirstGesture, true);
         window.removeEventListener('click', onFirstGesture, true);
+        window.removeEventListener('keydown', onFirstGesture, true);
       }
 
-      function tryStartBgm() {
+      function tryStartBgm(fromGesture = false) {
         if (userPaused) return;
         const p = bgm.play();
         if (p && typeof p.then === 'function') {
           p.then(() => {
-            syncBgmUi();
+            bgmUnlocked = true;
+            syncBgmUi(false);
             removeUnlockListeners();
           }).catch(() => {
-            syncBgmUi();
+            // 若浏览器拦截自动播放，保持解锁监听并提示用户轻触任意处开启声音
+            syncBgmUi(true);
+            if (fromGesture && !bgmUnlocked) {
+              // 极少数机型需在同步激活后重新 load 再 play
+              try { bgm.load(); bgm.play().catch(() => {}); } catch {}
+            }
           });
         } else {
-          syncBgmUi();
-        }
-      }
-
-      function onFirstGesture(e) {
-        if (bgmBtn && bgmBtn.contains(e.target)) return;
-        if (!userPaused && bgm.paused) {
-          tryStartBgm();
-        } else {
+          bgmUnlocked = true;
+          syncBgmUi(false);
           removeUnlockListeners();
         }
       }
 
-      bgm.addEventListener('play', syncBgmUi);
-      bgm.addEventListener('pause', syncBgmUi);
+      window.__unlockBgm = () => tryStartBgm(true);
+
+      function onFirstGesture(e) {
+        if (bgmBtn && bgmBtn.contains(e.target)) return;
+        if (bgmUnlocked || userPaused) {
+          removeUnlockListeners();
+          return;
+        }
+        tryStartBgm(true);
+      }
+
+      bgm.addEventListener('play', () => syncBgmUi(false));
+      bgm.addEventListener('pause', () => syncBgmUi(!userPaused && !bgmUnlocked));
 
       if (bgmBtn) {
         bgmBtn.addEventListener('click', () => {
           if (bgm.paused) {
             userPaused = false;
-            tryStartBgm();
+            tryStartBgm(true);
           } else {
             userPaused = true;
+            syncBgmUi(false);
             bgm.pause();
           }
         });
       }
 
-      // 绑定首次任意操作兜底解锁（兼容移动端浏览器与桌面严格自动播放策略）
+      // 绑定移动端真正认可的激活事件（touchend / click / keydown，避免 pointerdown 误删监听）
       gestureBound = true;
-      window.addEventListener('pointerdown', onFirstGesture, { capture: true, passive: true });
-      window.addEventListener('touchstart', onFirstGesture, { capture: true, passive: true });
-      window.addEventListener('keydown', onFirstGesture, { capture: true, passive: true });
+      window.addEventListener('touchend', onFirstGesture, { capture: true, passive: true });
       window.addEventListener('click', onFirstGesture, { capture: true, passive: true });
+      window.addEventListener('keydown', onFirstGesture, { capture: true, passive: true });
 
       // 微信内置浏览器自动播放支持
       document.addEventListener('WeixinJSBridgeReady', () => {
-        if (!userPaused) tryStartBgm();
+        if (!userPaused) tryStartBgm(false);
       }, false);
+      if (typeof window.WeixinJSBridge !== 'undefined' && typeof window.WeixinJSBridge.invoke === 'function') {
+        try { window.WeixinJSBridge.invoke('getNetworkType', {}, () => { if (!userPaused) tryStartBgm(false); }); } catch {}
+      }
 
       // 页面打开第一时间尝试播放
-      tryStartBgm();
+      tryStartBgm(false);
 
       // 加载并实时同步 bgm.lrc 歌词字幕
       const lyricBarEl = document.getElementById('lyricBar');
