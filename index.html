@@ -1170,7 +1170,7 @@
       }
     }
 
-    /* 同步歌词字幕：桌面端位于正下方水平居中，手机端位于屏幕右侧竖排 */
+    /* 同步歌词字幕：桌面端与手机端均位于正下方水平居中 */
     .lyric-bar {
       position: fixed;
       left: 50%;
@@ -1312,33 +1312,20 @@
         justify-content: flex-start;
         font-size: 12px;
       }
-      /* 手机端字幕：放在屏幕右侧竖排列 */
+      /* 手机端字幕：同样放在正下方水平居中 */
       .lyric-bar {
-        left: auto;
-        bottom: auto;
-        right: max(14px, env(safe-area-inset-right));
-        top: max(96px, calc(env(safe-area-inset-top) + 76px));
-        transform: none;
-        max-width: none;
-        max-height: 52dvh;
-        writing-mode: vertical-rl;
-        text-orientation: mixed;
-        text-align: start;
-      }
-      .lyric-inner {
-        align-items: flex-start;
-        gap: 6px;
+        bottom: max(18px, calc(env(safe-area-inset-bottom) + 10px));
+        width: calc(100vw - 32px);
+        max-width: min(460px, calc(100vw - 32px));
       }
       .lyric-main {
-        font-size: 22px;
-        line-height: 1.4;
-        letter-spacing: 0.04em;
-        padding: 4px 0;
+        font-size: clamp(20px, 5.4vw, 25px);
+        line-height: 1.3;
+        padding: 0 6px;
       }
       .lyric-sub {
         font-size: 12px;
-        line-height: 1.45;
-        letter-spacing: 0.06em;
+        line-height: 1.4;
       }
       .modal-backdrop {
         padding: 16px;
