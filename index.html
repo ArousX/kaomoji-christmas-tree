@@ -1081,6 +1081,64 @@
       transform: translateX(-50%) translateY(0);
     }
 
+    /* 右上角极简背景音乐唱片按钮 */
+    .bgm-toggle {
+      position: fixed;
+      top: max(18px, env(safe-area-inset-top));
+      right: max(18px, env(safe-area-inset-right));
+      z-index: 45;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid var(--border-strong);
+      background: rgba(14, 18, 28, 0.55);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: var(--text-2);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: border-color 0.2s var(--ease-out), color 0.2s var(--ease-out), background 0.2s var(--ease-out), transform 0.16s var(--ease-out);
+    }
+
+    .bgm-toggle:hover {
+      color: var(--text-1);
+      border-color: rgba(229, 185, 107, 0.55);
+      background: rgba(24, 30, 44, 0.78);
+    }
+
+    .bgm-toggle:active {
+      transform: scale(0.93);
+    }
+
+    .bgm-toggle.is-playing {
+      color: var(--accent);
+      border-color: rgba(229, 185, 107, 0.5);
+      animation: bgmPulseGlow 2.6s ease-out infinite;
+    }
+
+    .bgm-toggle .bgm-slash {
+      opacity: 1;
+      transition: opacity 0.2s var(--ease-out);
+    }
+
+    .bgm-toggle.is-playing .bgm-slash {
+      opacity: 0;
+    }
+
+    @keyframes bgmPulseGlow {
+      0% { box-shadow: 0 0 0 0 rgba(229, 185, 107, 0.34); }
+      70% { box-shadow: 0 0 0 7px rgba(229, 185, 107, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(229, 185, 107, 0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .bgm-toggle.is-playing {
+        animation: none;
+      }
+    }
+
     @media (max-width: 768px) {
       .plant-prompt-overlay {
         padding: 20px 18px max(28px, env(safe-area-inset-bottom));
@@ -1169,6 +1227,15 @@
   </style>
 </head>
 <body>
+  <audio id="bgmAudio" src="bgm.mp3" preload="auto" autoplay loop playsinline webkit-playsinline></audio>
+  <button class="bgm-toggle" id="bgmToggle" type="button" title="背景音乐" aria-label="切换背景音乐">
+    <svg class="ui-icon bgm-icon-note" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M9 18V5l12-2v13"/>
+      <circle cx="6" cy="18" r="3"/>
+      <circle cx="18" cy="16" r="3"/>
+      <line class="bgm-slash" x1="3" y1="3" x2="21" y2="21" stroke-width="1.8"/>
+    </svg>
+  </button>
   <canvas id="treeCanvas"></canvas>
 
   <!-- 首屏开场交互：在雪花背景上「为 [xxx] 种下圣诞树」 -->
@@ -4173,6 +4240,89 @@
           if (!tiltRaf) tiltRaf = requestAnimationFrame(stepTilt);
         });
       }
+    })();
+
+    // =========================================================================
+    // 背景音乐：打开即播（拦截时自动在首次交互/微信桥接就绪时瞬时解锁播放）
+    // =========================================================================
+    (() => {
+      const bgm = document.getElementById('bgmAudio');
+      const bgmBtn = document.getElementById('bgmToggle');
+      if (!bgm) return;
+
+      bgm.volume = 0.52;
+      let userPaused = false;
+      let gestureBound = false;
+
+      function syncBgmUi() {
+        if (!bgmBtn) return;
+        const playing = !bgm.paused && !bgm.ended;
+        bgmBtn.classList.toggle('is-playing', playing);
+        bgmBtn.setAttribute('aria-pressed', playing ? 'true' : 'false');
+      }
+
+      function removeUnlockListeners() {
+        if (!gestureBound) return;
+        gestureBound = false;
+        window.removeEventListener('pointerdown', onFirstGesture, true);
+        window.removeEventListener('touchstart', onFirstGesture, true);
+        window.removeEventListener('keydown', onFirstGesture, true);
+        window.removeEventListener('click', onFirstGesture, true);
+      }
+
+      function tryStartBgm() {
+        if (userPaused) return;
+        const p = bgm.play();
+        if (p && typeof p.then === 'function') {
+          p.then(() => {
+            syncBgmUi();
+            removeUnlockListeners();
+          }).catch(() => {
+            syncBgmUi();
+          });
+        } else {
+          syncBgmUi();
+        }
+      }
+
+      function onFirstGesture(e) {
+        if (bgmBtn && bgmBtn.contains(e.target)) return;
+        if (!userPaused && bgm.paused) {
+          tryStartBgm();
+        } else {
+          removeUnlockListeners();
+        }
+      }
+
+      bgm.addEventListener('play', syncBgmUi);
+      bgm.addEventListener('pause', syncBgmUi);
+
+      if (bgmBtn) {
+        bgmBtn.addEventListener('click', () => {
+          if (bgm.paused) {
+            userPaused = false;
+            tryStartBgm();
+          } else {
+            userPaused = true;
+            bgm.pause();
+          }
+        });
+      }
+
+      // 绑定首次任意操作兜底解锁（兼容移动端浏览器与桌面严格自动播放策略）
+      gestureBound = true;
+      window.addEventListener('pointerdown', onFirstGesture, { capture: true, passive: true });
+      window.addEventListener('touchstart', onFirstGesture, { capture: true, passive: true });
+      window.addEventListener('keydown', onFirstGesture, { capture: true, passive: true });
+      window.addEventListener('click', onFirstGesture, { capture: true, passive: true });
+
+      // 微信内置浏览器自动播放支持
+      document.addEventListener('WeixinJSBridgeReady', () => {
+        if (!userPaused) tryStartBgm();
+      }, false);
+
+      // 页面打开第一时间尝试播放
+      tryStartBgm();
     })();
   </script>
 </body>
