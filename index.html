@@ -1168,12 +1168,14 @@
     }
 
     .lyric-main {
-      font-size: 16px;
-      font-weight: 500;
-      line-height: 1.5;
-      letter-spacing: 0.04em;
-      color: rgba(243, 245, 248, 0.94);
-      text-shadow: 0 2px 14px rgba(5, 7, 14, 0.92), 0 0 22px rgba(232, 184, 109, 0.16);
+      font-family: "Great Vibes", "Brush Script MT", "Segoe Script", "Snell Roundhand", "Apple Chancery", cursive;
+      font-size: clamp(24px, 2.3vw, 32px);
+      font-weight: 400;
+      line-height: 1.35;
+      letter-spacing: 0.02em;
+      padding: 0 8px;
+      color: rgba(243, 245, 248, 0.96);
+      text-shadow: 0 2px 14px rgba(5, 7, 14, 0.92), 0 0 22px rgba(232, 184, 109, 0.22);
     }
 
     .lyric-sub {
@@ -1290,7 +1292,7 @@
         top: max(96px, calc(env(safe-area-inset-top) + 76px));
         transform: none;
         max-width: none;
-        max-height: 46dvh;
+        max-height: 52dvh;
         writing-mode: vertical-rl;
         text-orientation: mixed;
         text-align: start;
@@ -1300,9 +1302,10 @@
         gap: 6px;
       }
       .lyric-main {
-        font-size: 14.5px;
-        line-height: 1.55;
-        letter-spacing: 0.08em;
+        font-size: 22px;
+        line-height: 1.4;
+        letter-spacing: 0.04em;
+        padding: 4px 0;
       }
       .lyric-sub {
         font-size: 12px;
