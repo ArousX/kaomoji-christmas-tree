@@ -6,7 +6,9 @@
   <title>Merry Christmas · 3D 颜文字圣诞树</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet" />
+  <!-- 非阻塞加载花体字体，避免国内微信等环境因外链超时阻塞页面解析与音频脚本初始化 -->
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet" /></noscript>
   <style>
     :root {
       --bg-page: #090c14;
@@ -1343,7 +1345,7 @@
   </style>
 </head>
 <body>
-  <audio id="bgmAudio" src="bgm.mp3" preload="auto" loop playsinline webkit-playsinline></audio>
+  <audio id="bgmAudio" src="bgm.mp3" preload="auto" loop playsinline webkit-playsinline x5-playsinline="true"></audio>
   <button class="bgm-toggle" id="bgmToggle" type="button" title="背景音乐" aria-label="切换背景音乐">
     <span class="bgm-hint" id="bgmHint">点按开声 ♪</span>
     <svg class="ui-icon bgm-icon-note" viewBox="0 0 24 24" aria-hidden="true">
@@ -1355,7 +1357,7 @@
   </button>
   <canvas id="treeCanvas"></canvas>
 
-  <!-- 音乐同步歌词字幕（桌面正下方水平 / 手机右侧竖排） -->
+  <!-- 音乐同步歌词字幕（桌面端与手机端均位于正下方水平居中） -->
   <div class="lyric-bar" id="lyricBar" aria-live="polite">
     <div class="lyric-inner">
       <div class="lyric-main" id="lyricMain"></div>
@@ -1535,6 +1537,201 @@
   <div class="toast-msg" id="toastMsg">已挂上圣诞树</div>
 
   <script>
+    // =========================================================================
+    // 背景音乐：优先注册微信桥接与全手势解锁（打开即尝试播放，拦截时首触即播）
+    // =========================================================================
+    (() => {
+      const bgm = document.getElementById('bgmAudio');
+      const bgmBtn = document.getElementById('bgmToggle');
+      if (!bgm) return;
+
+      bgm.volume = 0.85;
+      let userPaused = false;
+      let bgmUnlocked = false;
+      let gestureBound = false;
+
+      function syncBgmUi(blockedWaiting = false) {
+        if (!bgmBtn) return;
+        const playing = !bgm.paused && !bgm.ended;
+        if (playing) bgmUnlocked = true;
+        bgmBtn.classList.toggle('is-playing', playing);
+        bgmBtn.classList.toggle('is-waiting', !playing && !userPaused && blockedWaiting);
+        bgmBtn.setAttribute('aria-pressed', playing ? 'true' : 'false');
+      }
+
+      function removeUnlockListeners() {
+        if (!gestureBound) return;
+        gestureBound = false;
+        window.removeEventListener('touchstart', onFirstGesture, true);
+        window.removeEventListener('touchend', onFirstGesture, true);
+        window.removeEventListener('click', onFirstGesture, true);
+        window.removeEventListener('keydown', onFirstGesture, true);
+      }
+
+      function tryStartBgm() {
+        if (userPaused) return;
+        const p = bgm.play();
+        if (p && typeof p.then === 'function') {
+          p.then(() => {
+            bgmUnlocked = true;
+            syncBgmUi(false);
+            removeUnlockListeners();
+          }).catch(() => {
+            // 被浏览器/客户端策略拦截时保持待解锁状态，绝不调用 load() 清空缓冲
+            syncBgmUi(true);
+          });
+        } else {
+          bgmUnlocked = true;
+          syncBgmUi(false);
+          removeUnlockListeners();
+        }
+      }
+
+      // 微信内置浏览器：通过 getNetworkType 桥接回调触发播放（兼容 iOS 微信免点击）
+      function triggerWechatBgm() {
+        if (userPaused || bgmUnlocked) return;
+        if (window.WeixinJSBridge && typeof window.WeixinJSBridge.invoke === 'function') {
+          try {
+            window.WeixinJSBridge.invoke('getNetworkType', {}, () => {
+              if (!userPaused && !bgmUnlocked) tryStartBgm();
+            });
+            return;
+          } catch {}
+        }
+        tryStartBgm();
+      }
+
+      window.__unlockBgm = () => tryStartBgm();
+
+      function onFirstGesture(e) {
+        if (bgmBtn && bgmBtn.contains(e.target)) return;
+        if (bgmUnlocked || userPaused) {
+          removeUnlockListeners();
+          return;
+        }
+        tryStartBgm();
+      }
+
+      bgm.addEventListener('play', () => syncBgmUi(false));
+      bgm.addEventListener('playing', () => {
+        bgmUnlocked = true;
+        syncBgmUi(false);
+        removeUnlockListeners();
+      });
+      bgm.addEventListener('pause', () => syncBgmUi(!userPaused && !bgmUnlocked));
+
+      if (bgmBtn) {
+        bgmBtn.addEventListener('click', () => {
+          if (bgm.paused) {
+            userPaused = false;
+            tryStartBgm();
+          } else {
+            userPaused = true;
+            syncBgmUi(false);
+            bgm.pause();
+          }
+        });
+      }
+
+      // 捕获全手势解锁（touchstart + touchend + click + keydown），仅当 play() 真正成功后才卸载
+      gestureBound = true;
+      window.addEventListener('touchstart', onFirstGesture, { capture: true, passive: true });
+      window.addEventListener('touchend', onFirstGesture, { capture: true, passive: true });
+      window.addEventListener('click', onFirstGesture, { capture: true, passive: true });
+      window.addEventListener('keydown', onFirstGesture, { capture: true, passive: true });
+
+      document.addEventListener('WeixinJSBridgeReady', triggerWechatBgm, false);
+      if (typeof window.WeixinJSBridge !== 'undefined') {
+        triggerWechatBgm();
+      } else {
+        tryStartBgm();
+      }
+
+      // 加载并实时同步 bgm.lrc 歌词字幕
+      const lyricBarEl = document.getElementById('lyricBar');
+      const lyricMainEl = document.getElementById('lyricMain');
+      const lyricSubEl = document.getElementById('lyricSub');
+      let lyricLines = [];
+      let activeLyricIdx = -1;
+      let lyricAnimTimer = 0;
+
+      function parseLrcText(raw) {
+        const lines = [];
+        let offsetSec = 0;
+        const rows = String(raw || '').split(/\r?\n/);
+        for (const row of rows) {
+          const offsetMatch = row.match(/\[offset:\s*([+-]?\d+)\s*\]/i);
+          if (offsetMatch) {
+            offsetSec = parseInt(offsetMatch[1], 10) * 0.001;
+            continue;
+          }
+          const timeTags = [...row.matchAll(/\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?\]/g)];
+          if (!timeTags.length) continue;
+          const text = row.replace(/\[\d{1,3}:\d{1,2}(?:[.:]\d{1,3})?\]/g, '').trim();
+          for (const m of timeTags) {
+            const min = parseInt(m[1], 10);
+            const sec = parseInt(m[2], 10);
+            const msRaw = m[3] || '0';
+            const ms = parseInt(msRaw.padEnd(3, '0').slice(0, 3), 10);
+            const time = Math.max(0, min * 60 + sec + ms * 0.001 + offsetSec);
+            lines.push({ time, text });
+          }
+        }
+        lines.sort((a, b) => a.time - b.time);
+
+        // 合并同时间戳的双语行（例如原文 + 中文翻译）
+        const merged = [];
+        for (const item of lines) {
+          const last = merged[merged.length - 1];
+          if (last && Math.abs(last.time - item.time) < 0.08 && item.text) {
+            if (!last.sub) last.sub = item.text;
+          } else {
+            merged.push({ time: item.time, main: item.text, sub: '' });
+          }
+        }
+        return merged;
+      }
+
+      function syncLyricFrame() {
+        if (!lyricLines.length || !lyricBarEl || !lyricMainEl) return;
+        const t = bgm.currentTime || 0;
+        let idx = -1;
+        for (let i = 0; i < lyricLines.length; i++) {
+          if (t + 0.08 >= lyricLines[i].time) idx = i;
+          else break;
+        }
+        if (idx === activeLyricIdx) return;
+        activeLyricIdx = idx;
+        const item = idx >= 0 ? lyricLines[idx] : null;
+        if (!item || !item.main) {
+          lyricBarEl.classList.remove('has-lyric');
+          return;
+        }
+        lyricMainEl.textContent = item.main;
+        if (lyricSubEl) lyricSubEl.textContent = item.sub || '';
+        lyricBarEl.classList.add('has-lyric');
+        lyricBarEl.classList.remove('is-changing');
+        void lyricBarEl.offsetWidth;
+        lyricBarEl.classList.add('is-changing');
+        clearTimeout(lyricAnimTimer);
+        lyricAnimTimer = setTimeout(() => lyricBarEl.classList.remove('is-changing'), 380);
+      }
+
+      fetch('bgm.lrc')
+        .then((res) => (res.ok ? res.text() : ''))
+        .then((text) => {
+          if (!text) return;
+          lyricLines = parseLrcText(text);
+          if (lyricLines.length) {
+            bgm.addEventListener('timeupdate', syncLyricFrame);
+            bgm.addEventListener('seeked', syncLyricFrame);
+            bgm.addEventListener('play', syncLyricFrame);
+            syncLyricFrame();
+          }
+        })
+        .catch(() => {});
+    })();
+
     // =========================================================================
     // 3D 多彩颜文字圣诞树（全离屏贴图缓存加速版：0 shadowBlur 实时开销，稳跑高刷满帧！）
     // =========================================================================
@@ -4366,187 +4563,6 @@
       }
     })();
 
-    // =========================================================================
-    // 背景音乐：打开即播（拦截时自动在首次交互/微信桥接就绪时瞬时解锁播放）
-    // =========================================================================
-    (() => {
-      const bgm = document.getElementById('bgmAudio');
-      const bgmBtn = document.getElementById('bgmToggle');
-      if (!bgm) return;
-
-      bgm.volume = 0.85;
-      let userPaused = false;
-      let bgmUnlocked = false;
-      let gestureBound = false;
-
-      function syncBgmUi(blockedWaiting = false) {
-        if (!bgmBtn) return;
-        const playing = !bgm.paused && !bgm.ended;
-        if (playing) bgmUnlocked = true;
-        bgmBtn.classList.toggle('is-playing', playing);
-        bgmBtn.classList.toggle('is-waiting', !playing && !userPaused && blockedWaiting);
-        bgmBtn.setAttribute('aria-pressed', playing ? 'true' : 'false');
-      }
-
-      function removeUnlockListeners() {
-        if (!gestureBound) return;
-        gestureBound = false;
-        window.removeEventListener('touchend', onFirstGesture, true);
-        window.removeEventListener('click', onFirstGesture, true);
-        window.removeEventListener('keydown', onFirstGesture, true);
-      }
-
-      function tryStartBgm(fromGesture = false) {
-        if (userPaused) return;
-        const p = bgm.play();
-        if (p && typeof p.then === 'function') {
-          p.then(() => {
-            bgmUnlocked = true;
-            syncBgmUi(false);
-            removeUnlockListeners();
-          }).catch(() => {
-            // 若浏览器拦截自动播放，保持解锁监听并提示用户轻触任意处开启声音
-            syncBgmUi(true);
-            if (fromGesture && !bgmUnlocked) {
-              // 极少数机型需在同步激活后重新 load 再 play
-              try { bgm.load(); bgm.play().catch(() => {}); } catch {}
-            }
-          });
-        } else {
-          bgmUnlocked = true;
-          syncBgmUi(false);
-          removeUnlockListeners();
-        }
-      }
-
-      window.__unlockBgm = () => tryStartBgm(true);
-
-      function onFirstGesture(e) {
-        if (bgmBtn && bgmBtn.contains(e.target)) return;
-        if (bgmUnlocked || userPaused) {
-          removeUnlockListeners();
-          return;
-        }
-        tryStartBgm(true);
-      }
-
-      bgm.addEventListener('play', () => syncBgmUi(false));
-      bgm.addEventListener('pause', () => syncBgmUi(!userPaused && !bgmUnlocked));
-
-      if (bgmBtn) {
-        bgmBtn.addEventListener('click', () => {
-          if (bgm.paused) {
-            userPaused = false;
-            tryStartBgm(true);
-          } else {
-            userPaused = true;
-            syncBgmUi(false);
-            bgm.pause();
-          }
-        });
-      }
-
-      // 绑定移动端真正认可的激活事件（touchend / click / keydown，避免 pointerdown 误删监听）
-      gestureBound = true;
-      window.addEventListener('touchend', onFirstGesture, { capture: true, passive: true });
-      window.addEventListener('click', onFirstGesture, { capture: true, passive: true });
-      window.addEventListener('keydown', onFirstGesture, { capture: true, passive: true });
-
-      // 微信内置浏览器自动播放支持
-      document.addEventListener('WeixinJSBridgeReady', () => {
-        if (!userPaused) tryStartBgm(false);
-      }, false);
-      if (typeof window.WeixinJSBridge !== 'undefined' && typeof window.WeixinJSBridge.invoke === 'function') {
-        try { window.WeixinJSBridge.invoke('getNetworkType', {}, () => { if (!userPaused) tryStartBgm(false); }); } catch {}
-      }
-
-      // 页面打开第一时间尝试播放
-      tryStartBgm(false);
-
-      // 加载并实时同步 bgm.lrc 歌词字幕
-      const lyricBarEl = document.getElementById('lyricBar');
-      const lyricMainEl = document.getElementById('lyricMain');
-      const lyricSubEl = document.getElementById('lyricSub');
-      let lyricLines = [];
-      let activeLyricIdx = -1;
-      let lyricAnimTimer = 0;
-
-      function parseLrcText(raw) {
-        const lines = [];
-        let offsetSec = 0;
-        const rows = String(raw || '').split(/\r?\n/);
-        for (const row of rows) {
-          const offsetMatch = row.match(/\[offset:\s*([+-]?\d+)\s*\]/i);
-          if (offsetMatch) {
-            offsetSec = parseInt(offsetMatch[1], 10) * 0.001;
-            continue;
-          }
-          const timeTags = [...row.matchAll(/\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?\]/g)];
-          if (!timeTags.length) continue;
-          const text = row.replace(/\[\d{1,3}:\d{1,2}(?:[.:]\d{1,3})?\]/g, '').trim();
-          for (const m of timeTags) {
-            const min = parseInt(m[1], 10);
-            const sec = parseInt(m[2], 10);
-            const msRaw = m[3] || '0';
-            const ms = parseInt(msRaw.padEnd(3, '0').slice(0, 3), 10);
-            const time = Math.max(0, min * 60 + sec + ms * 0.001 + offsetSec);
-            lines.push({ time, text });
-          }
-        }
-        lines.sort((a, b) => a.time - b.time);
-
-        // 合并同时间戳的双语行（例如原文 + 中文翻译）
-        const merged = [];
-        for (const item of lines) {
-          const last = merged[merged.length - 1];
-          if (last && Math.abs(last.time - item.time) < 0.08 && item.text) {
-            if (!last.sub) last.sub = item.text;
-          } else {
-            merged.push({ time: item.time, main: item.text, sub: '' });
-          }
-        }
-        return merged;
-      }
-
-      function syncLyricFrame() {
-        if (!lyricLines.length || !lyricBarEl || !lyricMainEl) return;
-        const t = bgm.currentTime || 0;
-        let idx = -1;
-        for (let i = 0; i < lyricLines.length; i++) {
-          if (t + 0.08 >= lyricLines[i].time) idx = i;
-          else break;
-        }
-        if (idx === activeLyricIdx) return;
-        activeLyricIdx = idx;
-        const item = idx >= 0 ? lyricLines[idx] : null;
-        if (!item || !item.main) {
-          lyricBarEl.classList.remove('has-lyric');
-          return;
-        }
-        lyricMainEl.textContent = item.main;
-        if (lyricSubEl) lyricSubEl.textContent = item.sub || '';
-        lyricBarEl.classList.add('has-lyric');
-        lyricBarEl.classList.remove('is-changing');
-        void lyricBarEl.offsetWidth;
-        lyricBarEl.classList.add('is-changing');
-        clearTimeout(lyricAnimTimer);
-        lyricAnimTimer = setTimeout(() => lyricBarEl.classList.remove('is-changing'), 380);
-      }
-
-      fetch('bgm.lrc')
-        .then((res) => (res.ok ? res.text() : ''))
-        .then((text) => {
-          if (!text) return;
-          lyricLines = parseLrcText(text);
-          if (lyricLines.length) {
-            bgm.addEventListener('timeupdate', syncLyricFrame);
-            bgm.addEventListener('seeked', syncLyricFrame);
-            bgm.addEventListener('play', syncLyricFrame);
-            syncLyricFrame();
-          }
-        })
-        .catch(() => {});
-    })();
   </script>
 </body>
 </html>
