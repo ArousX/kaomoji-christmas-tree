@@ -3083,8 +3083,8 @@
           ? (w * 0.49 + (panX - 104) * 0.6)
           : (w * 0.52 + panX * (1 - 0.34 * ge)),
         cy: isMobile
-          ? (h * (0.62 - 0.055 * ge))
-          : (h * (0.49 - 0.048 * ge))
+          ? (h * (0.62 - 0.08 * ge))
+          : (h * (0.49 - 0.075 * ge))
       };
     }
 
@@ -3832,7 +3832,7 @@
       if (cardModalBackdrop.classList.contains('open') || composeModalBackdrop.classList.contains('open')) return;
       e.preventDefault();
       if (scenePhase !== 'ready') return;
-      targetGlobe = Math.max(0, Math.min(1, targetGlobe + e.deltaY * 0.00135));
+      targetGlobe = Math.max(0, Math.min(1, targetGlobe + e.deltaY * 0.00165));
     }, { passive: false });
 
     let pinchStartDist = 0;
@@ -3963,237 +3963,586 @@
       };
     }
 
-    function getMiniCottageProjection(fov, cx, cy, cosY, sinY, cosP, sinP) {
-      const hx = -146, hy = -126, hz = -48;
-      const hpy = hy - panY;
-      const rx = hx * cosY - hz * sinY;
-      const rz1 = hx * sinY + hz * cosY;
-      const depth = hpy * sinP + rz1 * cosP + camDist;
-      const scale = fov / Math.max(40, depth);
+    const globeGlitter = Array.from({ length: 42 }, (_, idx) => ({
+      ang: (idx * 2.39996) % (Math.PI * 2),
+      rad: rand(70, 232),
+      y: rand(-148, 225),
+      speed: rand(0.18, 0.45) * (idx % 2 === 0 ? 1 : -1),
+      bobPhase: rand(0, Math.PI * 2),
+      size: rand(1.6, 3.6),
+      warm: idx % 3 === 0
+    }));
+
+    function projectGlobeWorld(wx, wy, wz, cosY, sinY, cosP, sinP, fov, cx, cy) {
+      const py = wy - panY;
+      const rx = wx * cosY - wz * sinY;
+      const rz1 = wx * sinY + wz * cosY;
+      const depth = Math.max(30, py * sinP + rz1 * cosP + camDist);
+      const scale = fov / depth;
       return {
+        sx: cx + rx * scale,
+        sy: cy - (py * cosP - rz1 * sinP) * scale,
         depth,
         scale,
-        sx: cx + rx * scale,
-        sy: cy - (hpy * cosP - rz1 * sinP) * scale
+        rx,
+        rz: rz1
       };
     }
 
-    function drawMiniSnowCottage(cottage, alpha, timeSec, isPaper) {
-      if (alpha <= 0.01 || cottage.depth <= 30) return;
-      const u = cottage.scale * 1.18;
-      if (u < 0.08) return;
-      const w = 32 * u;
-      const h = 21 * u;
-      const roofH = 16 * u;
-      const sx = cottage.sx;
-      const sy = cottage.sy;
+    function drawPoly(pts, fillStyle, strokeStyle = null, lineWidth = 1) {
+      ctx.beginPath();
+      ctx.moveTo(pts[0].sx, pts[0].sy);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].sx, pts[i].sy);
+      ctx.closePath();
+      if (fillStyle) {
+        ctx.fillStyle = fillStyle;
+        ctx.fill();
+      }
+      if (strokeStyle) {
+        ctx.strokeStyle = strokeStyle;
+        ctx.lineWidth = lineWidth;
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+      }
+    }
+
+    function draw3DAlpineChalet(prop, alpha, timeSec, isPaper, cosY, sinY, cosP, sinP, fov, cx, cy) {
+      if (alpha <= 0.01 || prop.depth <= 35) return;
+      const ox = prop.wx, oy = prop.wy, oz = prop.wz;
+      const houseYaw = prop.localYaw;
+      const hw = 24, hd = 20, wh = 25, rh = 19;
+      const ch = Math.cos(houseYaw), sh = Math.sin(houseYaw);
+
+      function pt(lx, ly, lz) {
+        const rx = lx * ch - lz * sh;
+        const rz = lx * sh + lz * ch;
+        return projectGlobeWorld(ox + rx, oy + ly, oz + rz, cosY, sinY, cosP, sinP, fov, cx, cy);
+      }
+
+      // 8 墙角 + 2 屋脊顶点 + 6 悬挑雪檐顶点
+      const bFL = pt(-hw, 0, hd),   bFR = pt(hw, 0, hd),
+            bBR = pt(hw, 0, -hd),  bBL = pt(-hw, 0, -hd);
+      const tFL = pt(-hw, wh, hd),  tFR = pt(hw, wh, hd),
+            tBR = pt(hw, wh, -hd), tBL = pt(-hw, wh, -hd);
+      const rF  = pt(0, wh + rh, hd), rB = pt(0, wh + rh, -hd);
+      const ov = 5.5, ovZ = 4.5, drop = -3.2;
+      const eFL = pt(-hw - ov, wh + drop, hd + ovZ),
+            eFR = pt(hw + ov,  wh + drop, hd + ovZ),
+            eBR = pt(hw + ov,  wh + drop, -hd - ovZ),
+            eBL = pt(-hw - ov, wh + drop, -hd - ovZ);
+      const erF = pt(0, wh + rh + 2.2, hd + ovZ),
+            erB = pt(0, wh + rh + 2.2, -hd - ovZ);
 
       ctx.save();
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = alpha;
-      ctx.translate(sx, sy);
 
-      // 小屋脚下积雪基座
-      ctx.fillStyle = isPaper ? 'rgba(255, 252, 245, 0.92)' : 'rgba(222, 238, 255, 0.85)';
+      // 小屋基座积雪垫
+      const baseC = pt(0, -1, 0);
+      const sc = baseC.scale;
+      ctx.fillStyle = isPaper ? 'rgba(255, 252, 244, 0.94)' : 'rgba(214, 232, 255, 0.88)';
       ctx.beginPath();
-      ctx.ellipse(0, h * 0.45, w * 0.78, h * 0.28, 0, 0, Math.PI * 2);
+      ctx.ellipse(baseC.sx, baseC.sy, 38 * sc, 15 * sc, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // 小屋主体墙身
-      ctx.fillStyle = isPaper ? '#7c5539' : '#3a2723';
+      // 暖光向雪地洒出的光晕
+      const glowG = ctx.createRadialGradient(baseC.sx, baseC.sy, 0, baseC.sx, baseC.sy, 46 * sc);
+      glowG.addColorStop(0, isPaper ? 'rgba(240, 178, 72, 0.30)' : 'rgba(255, 198, 92, 0.36)');
+      glowG.addColorStop(1, 'rgba(255, 198, 92, 0)');
+      ctx.fillStyle = glowG;
       ctx.beginPath();
-      ctx.roundRect(-w * 0.46, -h * 0.48, w * 0.92, h * 0.92, 2.5 * u);
+      ctx.ellipse(baseC.sx, baseC.sy + 3 * sc, 46 * sc, 20 * sc, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // 山墙三角面
-      ctx.fillStyle = isPaper ? '#8d6243' : '#4a322c';
-      ctx.beginPath();
-      ctx.moveTo(-w * 0.46, -h * 0.46);
-      ctx.lineTo(0, -h * 0.46 - roofH * 0.78);
-      ctx.lineTo(w * 0.46, -h * 0.46);
-      ctx.closePath();
-      ctx.fill();
+      const wallFront = isPaper ? '#936846' : '#53352b';
+      const wallSide  = isPaper ? '#734e32' : '#3a231d';
+      const gableCol  = isPaper ? '#a1734f' : '#614034';
+      const timberLn  = isPaper ? 'rgba(54, 34, 20, 0.55)' : 'rgba(28, 16, 12, 0.72)';
 
-      // 屋顶烟囱与缓缓飘起的暖烟
-      const chX = w * 0.22;
-      const chY = -h * 0.46 - roofH * 0.62;
-      ctx.fillStyle = isPaper ? '#8c3b32' : '#6e342f';
-      ctx.fillRect(chX, chY, 5.2 * u, 9 * u);
-      for (let k = 0; k < 3; k++) {
-        const phase = ((timeSec * 0.45 + k * 0.33) % 1);
-        const smX = chX + 2.6 * u + Math.sin(timeSec * 1.8 + k * 2.1) * 3.5 * u + phase * 5 * u;
-        const smY = chY - phase * 18 * u;
-        const smR = (2.2 + phase * 3.4) * u;
-        ctx.fillStyle = isPaper
-          ? `rgba(120, 108, 96, ${(1 - phase) * 0.32})`
-          : `rgba(226, 238, 255, ${(1 - phase) * 0.38})`;
+      // 4 面墙与两面山墙按平均深度从远到近画（真 3D 立体旋转无破面）
+      const walls = [
+        { d: (bFL.depth + bFR.depth + tFR.depth + tFL.depth) * 0.25, kind: 'front', pts: [bFL, bFR, tFR, tFL], gable: [tFL, tFR, rF] },
+        { d: (bBL.depth + bBR.depth + tBR.depth + tBL.depth) * 0.25, kind: 'back',  pts: [bBR, bBL, tBL, tBR], gable: [tBR, tBL, rB] },
+        { d: (bBL.depth + bFL.depth + tFL.depth + tBL.depth) * 0.25, kind: 'left',  pts: [bBL, bFL, tFL, tBL] },
+        { d: (bFR.depth + bBR.depth + tBR.depth + tFR.depth) * 0.25, kind: 'right', pts: [bFR, bBR, tBR, tFR] }
+      ].sort((a, b) => b.d - a.d);
+
+      function drawWindowQuad(u0, u1, v0, v1, pA, pB, pC, pD) {
+        function bilerp(u, v) {
+          const sx = (1 - v) * ((1 - u) * pA.sx + u * pB.sx) + v * ((1 - u) * pD.sx + u * pC.sx);
+          const sy = (1 - v) * ((1 - u) * pA.sy + u * pB.sy) + v * ((1 - u) * pD.sy + u * pC.sy);
+          return { sx, sy };
+        }
+        const q = [bilerp(u0, v0), bilerp(u1, v0), bilerp(u1, v1), bilerp(u0, v1)];
+        drawPoly(q, '#ffe48c', timberLn, Math.max(0.8, 1.2 * sc));
+        // 田字格木窗棂
+        const mBot = bilerp((u0 + u1) * 0.5, v0), mTop = bilerp((u0 + u1) * 0.5, v1);
+        const mL   = bilerp(u0, (v0 + v1) * 0.5), mR   = bilerp(u1, (v0 + v1) * 0.5);
+        ctx.strokeStyle = timberLn;
+        ctx.lineWidth = Math.max(0.7, 0.9 * sc);
         ctx.beginPath();
-        ctx.arc(smX, smY, smR, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.moveTo(mBot.sx, mBot.sy); ctx.lineTo(mTop.sx, mTop.sy);
+        ctx.moveTo(mL.sx, mL.sy);     ctx.lineTo(mR.sx, mR.sy);
+        ctx.stroke();
       }
 
-      // 厚实蓬松的雪顶斜屋檐
-      ctx.fillStyle = isPaper ? '#fffdf8' : '#edf6ff';
-      ctx.beginPath();
-      ctx.moveTo(-w * 0.62, -h * 0.36);
-      ctx.quadraticCurveTo(-w * 0.28, -h * 0.50 - roofH * 0.56, 0, -h * 0.50 - roofH * 0.94);
-      ctx.quadraticCurveTo(w * 0.28, -h * 0.50 - roofH * 0.56, w * 0.62, -h * 0.36);
-      ctx.quadraticCurveTo(w * 0.45, -h * 0.22, w * 0.32, -h * 0.34);
-      ctx.lineTo(0, -h * 0.48 - roofH * 0.68);
-      ctx.lineTo(-w * 0.32, -h * 0.34);
-      ctx.quadraticCurveTo(-w * 0.45, -h * 0.22, -w * 0.62, -h * 0.36);
-      ctx.closePath();
-      ctx.fill();
+      for (const wFace of walls) {
+        const col = (wFace.kind === 'front' || wFace.kind === 'back') ? wallFront : wallSide;
+        drawPoly(wFace.pts, col, timberLn, Math.max(0.8, 1.1 * sc));
+        if (wFace.gable) {
+          drawPoly(wFace.gable, gableCol, timberLn, Math.max(0.8, 1.0 * sc));
+        }
+        const [pA, pB, pC, pD] = wFace.pts;
+        if (wFace.kind === 'front') {
+          // 拱形木门 + 二楼暖光山墙窗 + 门口小窗
+          drawWindowQuad(0.16, 0.36, 0.34, 0.72, pA, pB, pC, pD);
+          drawWindowQuad(0.45, 0.65, 0.04, 0.62, pA, pB, pC, pD);
+          drawWindowQuad(0.70, 0.88, 0.34, 0.72, pA, pB, pC, pD);
+          // 阁楼小窗
+          const gMid = pt(0, wh + rh * 0.42, hd + 0.4);
+          ctx.fillStyle = '#ffe699';
+          ctx.beginPath();
+          ctx.arc(gMid.sx, gMid.sy, Math.max(1.5, 3.6 * gMid.scale), 0, Math.PI * 2);
+          ctx.fill();
+        } else if (wFace.kind === 'left' || wFace.kind === 'right') {
+          drawWindowQuad(0.20, 0.44, 0.34, 0.72, pA, pB, pC, pD);
+          drawWindowQuad(0.56, 0.80, 0.34, 0.72, pA, pB, pC, pD);
+        } else {
+          drawWindowQuad(0.24, 0.46, 0.36, 0.72, pA, pB, pC, pD);
+          drawWindowQuad(0.54, 0.76, 0.36, 0.72, pA, pB, pC, pD);
+        }
+      }
 
-      // 暖光木门与两扇亮着暖灯的小窗户
-      const winGlow = isPaper ? 'rgba(232, 168, 56, 0.35)' : 'rgba(255, 208, 106, 0.45)';
-      const winGrad = ctx.createRadialGradient(-w * 0.19, -h * 0.05, 0, -w * 0.19, -h * 0.05, w * 0.42);
-      winGrad.addColorStop(0, winGlow);
-      winGrad.addColorStop(1, 'rgba(255, 208, 106, 0)');
-      ctx.fillStyle = winGrad;
-      ctx.beginPath();
-      ctx.arc(-w * 0.19, -h * 0.05, w * 0.42, 0, Math.PI * 2);
-      ctx.fill();
+      // 两坡厚实积雪屋顶（带厚度质感与檐口串灯）
+      const snowTopL = isPaper ? '#fffdf8' : '#f1f7ff';
+      const snowTopR = isPaper ? '#efe6d5' : '#cddff5';
+      const roofEdge = isPaper ? 'rgba(130, 108, 86, 0.45)' : 'rgba(160, 194, 232, 0.55)';
+      const roofs = [
+        { d: (eBL.depth + eFL.depth + erF.depth + erB.depth) * 0.25, pts: [eBL, eFL, erF, erB], col: snowTopL, e1: eBL, e2: eFL },
+        { d: (eFR.depth + eBR.depth + erB.depth + erF.depth) * 0.25, pts: [eFR, eBR, erB, erF], col: snowTopR, e1: eFR, e2: eBR }
+      ].sort((a, b) => b.d - a.d);
 
-      ctx.fillStyle = '#ffe082';
-      ctx.fillRect(-w * 0.28, -h * 0.16, 6.2 * u, 6.2 * u);
-      ctx.fillRect(w * 0.12, -h * 0.16, 6.2 * u, 6.2 * u);
-      ctx.fillStyle = '#ffbe55';
-      ctx.beginPath();
-      ctx.roundRect(-w * 0.07, -h * 0.10, 6.5 * u, h * 0.52, [3 * u, 3 * u, 0, 0]);
-      ctx.fill();
+      for (const rf of roofs) {
+        drawPoly(rf.pts, rf.col, roofEdge, Math.max(1, 1.3 * sc));
+        // 屋檐 4 颗暖色小彩灯
+        for (let b = 1; b <= 4; b++) {
+          const u = b / 5;
+          const bx = rf.e1.sx + (rf.e2.sx - rf.e1.sx) * u;
+          const by = rf.e1.sy + (rf.e2.sy - rf.e1.sy) * u + 2 * sc;
+          const twinkle = 0.65 + 0.35 * Math.sin(timeSec * 4.2 + b * 1.7);
+          ctx.fillStyle = b % 2 === 0 ? `rgba(255, 224, 125, ${twinkle})` : `rgba(255, 138, 128, ${twinkle})`;
+          ctx.beginPath();
+          ctx.arc(bx, by, Math.max(1.2, 2.2 * sc), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
 
+      // 屋顶石砌烟囱 + 缕缕暖白炊烟
+      const chB = pt(hw * 0.52, wh + rh * 0.45, -hd * 0.28);
+      const chT = pt(hw * 0.52, wh + rh + 9, -hd * 0.28);
+      ctx.fillStyle = isPaper ? '#8f4739' : '#733832';
+      ctx.fillRect(chT.sx - 4 * chT.scale, chT.sy, 8 * chT.scale, Math.max(3, chB.sy - chT.sy));
+      ctx.fillStyle = isPaper ? '#fffdf8' : '#eaf4ff';
+      ctx.fillRect(chT.sx - 5 * chT.scale, chT.sy - 1.5 * chT.scale, 10 * chT.scale, 3 * chT.scale);
+      for (let k = 0; k < 4; k++) {
+        const p = (timeSec * 0.38 + k * 0.25) % 1;
+        const sx2 = chT.sx + Math.sin(timeSec * 1.9 + k * 2.1) * 4 * sc + p * 8 * sc;
+        const sy2 = chT.sy - p * 26 * sc;
+        ctx.fillStyle = isPaper
+          ? `rgba(116, 104, 92, ${(1 - p) * 0.30})`
+          : `rgba(222, 238, 255, ${(1 - p) * 0.36})`;
+        ctx.beginPath();
+        ctx.arc(sx2, sy2, (2.2 + p * 4.6) * sc, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.restore();
     }
 
-    function renderSnowGlobeBack(g, globe, cottage, timeSec, isPaper) {
+    function draw3DMiniPine(prop, alpha, isPaper) {
+      if (alpha <= 0.01 || prop.depth <= 35) return;
+      const u = prop.scale * prop.sizeScale;
+      if (u < 0.08) return;
+      const sx = prop.sx, sy = prop.sy;
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = alpha;
+
+      // 树干
+      ctx.fillStyle = isPaper ? '#5c402c' : '#3a261d';
+      ctx.fillRect(sx - 3 * u, sy - 6 * u, 6 * u, 9 * u);
+
+      // 3 层落雪松冠
+      const layers = [
+        { y: -6 * u,  w: 22 * u, h: 20 * u },
+        { y: -19 * u, w: 17 * u, h: 17 * u },
+        { y: -30 * u, w: 12 * u, h: 14 * u }
+      ];
+      for (const ly of layers) {
+        ctx.fillStyle = isPaper ? '#2d5a42' : '#184237';
+        ctx.beginPath();
+        ctx.moveTo(sx, sy + ly.y - ly.h);
+        ctx.lineTo(sx - ly.w, sy + ly.y);
+        ctx.quadraticCurveTo(sx, sy + ly.y + 4 * u, sx + ly.w, sy + ly.y);
+        ctx.closePath();
+        ctx.fill();
+
+        // 树梢挂雪帽
+        ctx.fillStyle = isPaper ? 'rgba(255, 252, 245, 0.92)' : 'rgba(226, 242, 255, 0.90)';
+        ctx.beginPath();
+        ctx.moveTo(sx, sy + ly.y - ly.h);
+        ctx.lineTo(sx - ly.w * 0.62, sy + ly.y - ly.h * 0.36);
+        ctx.quadraticCurveTo(sx, sy + ly.y - ly.h * 0.14, sx + ly.w * 0.62, sy + ly.y - ly.h * 0.36);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function draw3DStreetLamp(prop, alpha, timeSec, isPaper) {
+      if (alpha <= 0.01 || prop.depth <= 35) return;
+      const u = prop.scale;
+      if (u < 0.08) return;
+      const sx = prop.sx, sy = prop.sy;
+      const postH = 38 * u;
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = alpha;
+
+      // 雪地暖黄光池
+      const gPool = ctx.createRadialGradient(sx, sy, 0, sx, sy, 28 * u);
+      gPool.addColorStop(0, 'rgba(255, 210, 108, 0.42)');
+      gPool.addColorStop(1, 'rgba(255, 210, 108, 0)');
+      ctx.fillStyle = gPool;
+      ctx.beginPath();
+      ctx.ellipse(sx, sy + 2 * u, 28 * u, 11 * u, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 铁艺灯柱
+      ctx.strokeStyle = isPaper ? '#3a342e' : '#1b2230';
+      ctx.lineWidth = Math.max(1.4, 2.6 * u);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(sx, sy + 2 * u);
+      ctx.lineTo(sx, sy - postH);
+      ctx.stroke();
+
+      // 发光灯罩与十字小檐
+      const pulse = 0.88 + 0.12 * Math.sin(timeSec * 3.5);
+      const lGlow = ctx.createRadialGradient(sx, sy - postH - 4 * u, 0, sx, sy - postH - 4 * u, 15 * u);
+      lGlow.addColorStop(0, `rgba(255, 240, 178, ${0.95 * pulse})`);
+      lGlow.addColorStop(0.35, `rgba(255, 200, 96, ${0.42 * pulse})`);
+      lGlow.addColorStop(1, 'rgba(255, 200, 96, 0)');
+      ctx.fillStyle = lGlow;
+      ctx.beginPath();
+      ctx.arc(sx, sy - postH - 4 * u, 15 * u, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffe99f';
+      ctx.beginPath();
+      ctx.roundRect(sx - 3.2 * u, sy - postH - 7 * u, 6.4 * u, 7.5 * u, 1.5 * u);
+      ctx.fill();
+      ctx.fillStyle = isPaper ? '#3a342e' : '#1b2230';
+      ctx.beginPath();
+      ctx.moveTo(sx - 5.5 * u, sy - postH - 7 * u);
+      ctx.lineTo(sx, sy - postH - 11.5 * u);
+      ctx.lineTo(sx + 5.5 * u, sy - postH - 7 * u);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function draw3DSnowman(prop, alpha, isPaper) {
+      if (alpha <= 0.01 || prop.depth <= 35) return;
+      const u = prop.scale;
+      if (u < 0.08) return;
+      const sx = prop.sx, sy = prop.sy;
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = alpha;
+
+      const snowBody = isPaper ? '#fffdf7' : '#edf6ff';
+      const snowRim  = isPaper ? 'rgba(130,115,98,0.4)' : 'rgba(145,182,226,0.45)';
+      ctx.fillStyle = snowBody;
+      ctx.strokeStyle = snowRim;
+      ctx.lineWidth = Math.max(0.8, 1.0 * u);
+
+      // 下雪球 + 上头部
+      ctx.beginPath();
+      ctx.arc(sx, sy - 6 * u, 8.5 * u, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(sx, sy - 17 * u, 6 * u, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+
+      // 红围巾
+      ctx.fillStyle = '#d94e5a';
+      ctx.beginPath();
+      ctx.roundRect(sx - 5.8 * u, sy - 12.6 * u, 11.6 * u, 3.2 * u, 1.5 * u);
+      ctx.fill();
+      ctx.fillRect(sx + 2 * u, sy - 10.5 * u, 2.8 * u, 5.5 * u);
+
+      // 胡萝卜鼻子与小礼帽
+      ctx.fillStyle = '#ff8a3d';
+      ctx.beginPath();
+      ctx.moveTo(sx, sy - 17.5 * u);
+      ctx.lineTo(sx + 5.2 * u, sy - 16.5 * u);
+      ctx.lineTo(sx, sy - 15.8 * u);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#242936';
+      ctx.fillRect(sx - 6.5 * u, sy - 22.8 * u, 13 * u, 2 * u);
+      ctx.fillRect(sx - 4.2 * u, sy - 28.5 * u, 8.4 * u, 6 * u);
+      ctx.restore();
+    }
+
+    function getSnowGlobeProjection(fov, cx, cy, sinP, cosP) {
+      const gPy = 12 - panY;
+      const gDepth = Math.max(40, gPy * sinP + camDist);
+      const gScale = fov / gDepth;
+      return {
+        gDepth,
+        gScale,
+        gx: cx,
+        gy: cy - (gPy * cosP) * gScale,
+        radius: 276 * gScale
+      };
+    }
+
+    function buildGlobeDiorama(fov, cx, cy, cosY, sinY, cosP, sinP) {
+      const props = [
+        { type: 'chalet', wx: -154, wy: -132, wz: 64,   localYaw: 0.36 },
+        { type: 'pine',   wx: -98,  wy: -132, wz: -138, sizeScale: 1.15 },
+        { type: 'pine',   wx: 158,  wy: -132, wz: -52,  sizeScale: 1.05 },
+        { type: 'pine',   wx: 122,  wy: -132, wz: 112,  sizeScale: 0.90 },
+        { type: 'lamp',   wx: 120,  wy: -132, wz: 58 },
+        { type: 'snowman',wx: -92,  wy: -132, wz: 132 }
+      ];
+      for (const p of props) {
+        const proj = projectGlobeWorld(p.wx, p.wy, p.wz, cosY, sinY, cosP, sinP, fov, cx, cy);
+        p.sx = proj.sx;
+        p.sy = proj.sy;
+        p.depth = proj.depth;
+        p.scale = proj.scale;
+      }
+      props.sort((a, b) => b.depth - a.depth);
+      return props;
+    }
+
+    function drawDioramaSubset(props, filterFn, alpha, timeSec, isPaper, cosY, sinY, cosP, sinP, fov, cx, cy) {
+      for (const p of props) {
+        if (!filterFn(p)) continue;
+        if (p.type === 'chalet') draw3DAlpineChalet(p, alpha, timeSec, isPaper, cosY, sinY, cosP, sinP, fov, cx, cy);
+        else if (p.type === 'pine') draw3DMiniPine(p, alpha, isPaper);
+        else if (p.type === 'lamp') draw3DStreetLamp(p, alpha, timeSec, isPaper);
+        else if (p.type === 'snowman') draw3DSnowman(p, alpha, isPaper);
+      }
+    }
+
+    function renderSnowGlobeBack(g, globe, diorama, effPitch, timeSec, isPaper, cosY, sinY, cosP, sinP, fov, cx, cy) {
       if (g <= 0.008) return;
       const alpha = easeOutCubic(Math.min(1, g * 1.15));
       const { gx, gy, radius } = globe;
       const baseTopY = gy + radius * 0.89;
-      const baseH = radius * 0.30;
-      const rxTop = radius * 0.62;
-      const rxBot = radius * 0.80;
+      const baseH = radius * 0.34;
+      const rxTop = radius * 0.63;
+      const rxBot = radius * 0.83;
+      const ellipRatio = Math.max(0.14, Math.min(0.26, 0.16 + Math.sin(effPitch) * 0.12));
 
       ctx.save();
       ctx.globalCompositeOperation = 'source-over';
 
-      // 1. 微缩桌面底部柔和投影（增强移轴桌面模型立体感）
-      const shGrad = ctx.createRadialGradient(
-        gx, baseTopY + baseH * 1.06, radius * 0.12,
-        gx, baseTopY + baseH * 1.06, rxBot * 1.28
-      );
-      shGrad.addColorStop(0, isPaper ? `rgba(60, 48, 34, ${0.26 * alpha})` : `rgba(0, 2, 8, ${0.65 * alpha})`);
+      // 0. 移轴桌面平面与远处暖色散景氛围光斑
+      if (viewW && viewH) {
+        const tableY = baseTopY + baseH * 0.62;
+        const tableGrad = ctx.createLinearGradient(0, tableY, 0, viewH);
+        if (isPaper) {
+          tableGrad.addColorStop(0, `rgba(218, 206, 184, ${0.0})`);
+          tableGrad.addColorStop(0.28, `rgba(214, 200, 176, ${0.42 * alpha})`);
+          tableGrad.addColorStop(1, `rgba(186, 170, 146, ${0.68 * alpha})`);
+        } else {
+          tableGrad.addColorStop(0, 'rgba(10, 14, 26, 0)');
+          tableGrad.addColorStop(0.24, `rgba(14, 18, 32, ${0.52 * alpha})`);
+          tableGrad.addColorStop(1, `rgba(5, 7, 14, ${0.84 * alpha})`);
+        }
+        ctx.fillStyle = tableGrad;
+        ctx.fillRect(0, tableY, viewW, viewH - tableY);
+      }
+
+      // 1. 底座阴影 + 穿过水晶球的折射散焦亮斑（Caustics，真实玻璃球的核心光学特征）
+      const floorY = baseTopY + baseH * 1.04;
+      const shGrad = ctx.createRadialGradient(gx, floorY, radius * 0.15, gx, floorY, rxBot * 1.38);
+      shGrad.addColorStop(0, isPaper ? `rgba(56, 44, 30, ${0.32 * alpha})` : `rgba(0, 2, 8, ${0.74 * alpha})`);
       shGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = shGrad;
       ctx.beginPath();
-      ctx.ellipse(gx, baseTopY + baseH * 1.06, rxBot * 1.28, baseH * 0.44, 0, 0, Math.PI * 2);
+      ctx.ellipse(gx, floorY, rxBot * 1.38, baseH * 0.42, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // 2. 玻璃球体内腔透亮底色与底部积雪地形（裁剪在球内）
+      // 折射落焦亮斑（右下方暖金 + 冰蓝微光）
+      const causX = gx + rxBot * 0.74;
+      const causY = floorY + baseH * 0.08;
+      const causGrad = ctx.createRadialGradient(causX, causY, 0, causX, causY, radius * 0.56);
+      causGrad.addColorStop(0, isPaper ? `rgba(255, 244, 210, ${0.38 * alpha})` : `rgba(195, 232, 255, ${0.24 * alpha})`);
+      causGrad.addColorStop(0.45, isPaper ? `rgba(242, 204, 132, ${0.18 * alpha})` : `rgba(255, 208, 128, ${0.12 * alpha})`);
+      causGrad.addColorStop(1, 'rgba(255, 208, 128, 0)');
+      ctx.fillStyle = causGrad;
+      ctx.beginPath();
+      ctx.ellipse(causX, causY, radius * 0.56, baseH * 0.24, 0.12, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 2. 玻璃球体内腔透亮底色与多层次雪丘景深（裁剪在球内）
       ctx.save();
       ctx.beginPath();
       ctx.arc(gx, gy, radius, 0, Math.PI * 2);
       ctx.clip();
 
       const innerGrad = ctx.createRadialGradient(
-        gx - radius * 0.25, gy - radius * 0.25, radius * 0.1,
+        gx - radius * 0.28, gy - radius * 0.28, radius * 0.08,
         gx, gy, radius
       );
       if (isPaper) {
-        innerGrad.addColorStop(0, `rgba(255, 253, 248, ${0.14 * alpha})`);
-        innerGrad.addColorStop(0.75, `rgba(240, 232, 214, ${0.22 * alpha})`);
-        innerGrad.addColorStop(1, `rgba(182, 162, 132, ${0.34 * alpha})`);
+        innerGrad.addColorStop(0, `rgba(255, 253, 248, ${0.12 * alpha})`);
+        innerGrad.addColorStop(0.76, `rgba(240, 232, 214, ${0.24 * alpha})`);
+        innerGrad.addColorStop(1, `rgba(176, 158, 128, ${0.40 * alpha})`);
       } else {
-        innerGrad.addColorStop(0, `rgba(160, 208, 255, ${0.04 * alpha})`);
-        innerGrad.addColorStop(0.76, `rgba(110, 175, 245, ${0.10 * alpha})`);
-        innerGrad.addColorStop(1, `rgba(185, 224, 255, ${0.22 * alpha})`);
+        innerGrad.addColorStop(0, `rgba(165, 214, 255, ${0.03 * alpha})`);
+        innerGrad.addColorStop(0.72, `rgba(98, 168, 245, ${0.10 * alpha})`);
+        innerGrad.addColorStop(0.92, `rgba(170, 220, 255, ${0.20 * alpha})`);
+        innerGrad.addColorStop(1, `rgba(225, 245, 255, ${0.32 * alpha})`);
       }
       ctx.fillStyle = innerGrad;
       ctx.fillRect(gx - radius, gy - radius, radius * 2, radius * 2);
 
-      // 球内底层积雪山丘
-      const snowTopY = gy + radius * 0.56;
-      const snowGrad = ctx.createLinearGradient(gx, snowTopY - radius * 0.08, gx, gy + radius);
-      if (isPaper) {
-        snowGrad.addColorStop(0, `rgba(255, 252, 244, ${0.90 * alpha})`);
-        snowGrad.addColorStop(1, `rgba(229, 219, 200, ${0.96 * alpha})`);
-      } else {
-        snowGrad.addColorStop(0, `rgba(218, 236, 255, ${0.34 * alpha})`);
-        snowGrad.addColorStop(0.45, `rgba(148, 184, 224, ${0.40 * alpha})`);
-        snowGrad.addColorStop(1, `rgba(24, 38, 66, ${0.88 * alpha})`);
-      }
-      ctx.fillStyle = snowGrad;
+      // 远景微缩雪山剪影 + 中景柔光雪丘（营造真微缩景深）
+      const farHillY = gy + radius * 0.48;
+      ctx.fillStyle = isPaper ? `rgba(218, 208, 190, ${0.55 * alpha})` : `rgba(38, 62, 102, ${0.48 * alpha})`;
       ctx.beginPath();
-      ctx.moveTo(gx - radius, snowTopY + radius * 0.05);
-      ctx.quadraticCurveTo(gx - radius * 0.34, snowTopY - radius * 0.12, gx, snowTopY + radius * 0.02);
-      ctx.quadraticCurveTo(gx + radius * 0.38, snowTopY + radius * 0.12, gx + radius, snowTopY - radius * 0.02);
+      ctx.moveTo(gx - radius, farHillY + radius * 0.08);
+      ctx.quadraticCurveTo(gx - radius * 0.42, farHillY - radius * 0.16, gx - radius * 0.05, farHillY - radius * 0.02);
+      ctx.quadraticCurveTo(gx + radius * 0.36, farHillY - radius * 0.18, gx + radius, farHillY + radius * 0.06);
       ctx.lineTo(gx + radius, gy + radius);
       ctx.lineTo(gx - radius, gy + radius);
       ctx.closePath();
       ctx.fill();
 
-      // 若小木屋此时转到了圣诞树后方，则在树后渲染小屋
-      if (cottage.depth >= globe.gDepth) {
-        drawMiniSnowCottage(cottage, alpha, timeSec, isPaper);
+      // 主雪丘地台（受底座 2700K 暖灯向上洗亮）
+      const snowTopY = gy + radius * 0.56;
+      const snowGrad = ctx.createLinearGradient(gx, snowTopY - radius * 0.10, gx, gy + radius);
+      if (isPaper) {
+        snowGrad.addColorStop(0, `rgba(255, 253, 246, ${0.94 * alpha})`);
+        snowGrad.addColorStop(1, `rgba(226, 215, 194, ${0.98 * alpha})`);
+      } else {
+        snowGrad.addColorStop(0, `rgba(226, 241, 255, ${0.38 * alpha})`);
+        snowGrad.addColorStop(0.45, `rgba(148, 184, 224, ${0.42 * alpha})`);
+        snowGrad.addColorStop(1, `rgba(22, 34, 60, ${0.90 * alpha})`);
       }
+      ctx.fillStyle = snowGrad;
+      ctx.beginPath();
+      ctx.moveTo(gx - radius, snowTopY + radius * 0.06);
+      ctx.quadraticCurveTo(gx - radius * 0.36, snowTopY - radius * 0.11, gx, snowTopY + radius * 0.02);
+      ctx.quadraticCurveTo(gx + radius * 0.36, snowTopY + radius * 0.11, gx + radius, snowTopY - radius * 0.03);
+      ctx.lineTo(gx + radius, gy + radius);
+      ctx.lineTo(gx - radius, gy + radius);
+      ctx.closePath();
+      ctx.fill();
+
+      // 树后方的小木屋 / 小松树 / 街灯 / 雪人
+      drawDioramaSubset(diorama, (p) => p.depth >= globe.gDepth, alpha, timeSec, isPaper, cosY, sinY, cosP, sinP, fov, cx, cy);
       ctx.restore();
 
-      // 3. 胡桃木鎏金雪球屋底座
+      // 3. 多层级车削红木 + 鎏金滚珠古典雪球屋底座
       ctx.globalAlpha = alpha;
       const woodGrad = ctx.createLinearGradient(gx - rxBot, baseTopY, gx + rxBot, baseTopY);
       if (isPaper) {
-        woodGrad.addColorStop(0, '#5a3d28');
-        woodGrad.addColorStop(0.32, '#8b6343');
-        woodGrad.addColorStop(0.68, '#734f34');
-        woodGrad.addColorStop(1, '#4a311f');
+        woodGrad.addColorStop(0, '#4f3321');
+        woodGrad.addColorStop(0.28, '#8a5d3e');
+        woodGrad.addColorStop(0.52, '#a3714d');
+        woodGrad.addColorStop(0.80, '#6e4930');
+        woodGrad.addColorStop(1, '#442b1b');
       } else {
-        woodGrad.addColorStop(0, '#140e10');
-        woodGrad.addColorStop(0.28, '#3b241d');
-        woodGrad.addColorStop(0.55, '#54352a');
-        woodGrad.addColorStop(0.82, '#2b1b18');
-        woodGrad.addColorStop(1, '#120c0e');
+        woodGrad.addColorStop(0, '#120b0c');
+        woodGrad.addColorStop(0.24, '#3d221b');
+        woodGrad.addColorStop(0.48, '#5f372a');
+        woodGrad.addColorStop(0.76, '#311b17');
+        woodGrad.addColorStop(1, '#10090b');
       }
+
+      // 主木质弧形束腰
       ctx.fillStyle = woodGrad;
       ctx.beginPath();
       ctx.moveTo(gx - rxTop, baseTopY);
       ctx.lineTo(gx + rxTop, baseTopY);
       ctx.bezierCurveTo(
-        gx + rxTop * 1.06, baseTopY + baseH * 0.45,
-        gx + rxBot * 0.98, baseTopY + baseH * 0.72,
-        gx + rxBot, baseTopY + baseH
+        gx + rxTop * 0.96, baseTopY + baseH * 0.34,
+        gx + rxBot * 0.96, baseTopY + baseH * 0.70,
+        gx + rxBot, baseTopY + baseH * 0.90
       );
-      ctx.ellipse(gx, baseTopY + baseH, rxBot, baseH * 0.22, 0, 0, Math.PI, false);
+      ctx.ellipse(gx, baseTopY + baseH * 0.90, rxBot, rxBot * ellipRatio * 0.72, 0, 0, Math.PI, false);
       ctx.bezierCurveTo(
-        gx - rxBot * 0.98, baseTopY + baseH * 0.72,
-        gx - rxTop * 1.06, baseTopY + baseH * 0.45,
+        gx - rxBot * 0.96, baseTopY + baseH * 0.70,
+        gx - rxTop * 0.96, baseTopY + baseH * 0.34,
         gx - rxTop, baseTopY
       );
       ctx.closePath();
       ctx.fill();
 
-      // 底座顶部鎏金嵌环
-      const brassGrad = ctx.createLinearGradient(gx - rxTop, baseTopY, gx + rxTop, baseTopY);
-      brassGrad.addColorStop(0, '#8a662b');
-      brassGrad.addColorStop(0.35, '#f2cf83');
-      brassGrad.addColorStop(0.65, '#cfa04c');
-      brassGrad.addColorStop(1, '#7a5923');
+      // 底部阶梯式古铜包边底座脚
+      const brassGrad = ctx.createLinearGradient(gx - rxBot, baseTopY, gx + rxBot, baseTopY);
+      brassGrad.addColorStop(0, '#6d4e1e');
+      brassGrad.addColorStop(0.26, '#cfa14b');
+      brassGrad.addColorStop(0.48, '#ffe094');
+      brassGrad.addColorStop(0.75, '#be8c3a');
+      brassGrad.addColorStop(1, '#614418');
       ctx.fillStyle = brassGrad;
       ctx.beginPath();
-      ctx.ellipse(gx, baseTopY, rxTop * 1.02, baseH * 0.17, 0, 0, Math.PI * 2);
+      ctx.ellipse(gx, baseTopY + baseH * 0.92, rxBot * 1.03, rxBot * ellipRatio * 0.78, 0, 0, Math.PI, false);
+      ctx.lineTo(gx - rxBot * 1.03, baseTopY + baseH * 0.84);
+      ctx.ellipse(gx, baseTopY + baseH * 0.84, rxBot * 1.03, rxBot * ellipRatio * 0.74, 0, Math.PI, 0, true);
+      ctx.closePath();
       ctx.fill();
 
-      // 底座正面鎏金铭牌（随球体大小流畅缩放）
-      const plateW = radius * 0.56;
-      const plateH = baseH * 0.34;
-      const plateY = baseTopY + baseH * 0.44;
+      // 上层鎏金托环 + 沿 3D 弧面排列的精致金珠浮雕饰边
+      ctx.fillStyle = brassGrad;
+      ctx.beginPath();
+      ctx.ellipse(gx, baseTopY, rxTop * 1.03, rxTop * ellipRatio * 0.72, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      const beadCount = 15;
+      const beadR = Math.max(1.2, radius * 0.015);
+      for (let i = 0; i < beadCount; i++) {
+        const ang = (i / (beadCount - 1)) * Math.PI;
+        const bx = gx - Math.cos(ang) * (rxTop * 0.99);
+        const by = baseTopY + Math.sin(ang) * (rxTop * ellipRatio * 0.68);
+        ctx.fillStyle = '#ffebb3';
+        ctx.beginPath();
+        ctx.arc(bx, by, beadR, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 底座正面带铆钉的鎏金铭牌
+      const plateW = radius * 0.58;
+      const plateH = baseH * 0.31;
+      const plateY = baseTopY + baseH * 0.45;
       ctx.fillStyle = brassGrad;
       ctx.beginPath();
       ctx.roundRect(gx - plateW * 0.5, plateY - plateH * 0.5, plateW, plateH, Math.max(2, plateH * 0.28));
       ctx.fill();
-      if (plateH >= 9) {
-        ctx.fillStyle = '#26180a';
-        ctx.font = `600 ${Math.max(7, Math.round(plateH * 0.52))}px "Inter", "PingFang SC", sans-serif`;
+      ctx.strokeStyle = 'rgba(72, 46, 16, 0.55)';
+      ctx.lineWidth = Math.max(0.7, radius * 0.004);
+      ctx.stroke();
+
+      if (plateH >= 8) {
+        // 左右小铆钉
+        const rivR = Math.max(1, plateH * 0.09);
+        ctx.fillStyle = '#5c3c12';
+        ctx.beginPath();
+        ctx.arc(gx - plateW * 0.44, plateY, rivR, 0, Math.PI * 2);
+        ctx.arc(gx + plateW * 0.44, plateY, rivR, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#241608';
+        ctx.font = `600 ${Math.max(7, Math.round(plateH * 0.50))}px "Inter", "PingFang SC", sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('★ MERRY CHRISTMAS ★', gx, plateY + 0.5);
@@ -4202,7 +4551,7 @@
       ctx.restore();
     }
 
-    function renderSnowGlobeFront(g, globe, cottage, timeSec, isPaper) {
+    function renderSnowGlobeFront(g, globe, diorama, timeSec, isPaper, cosY, sinY, cosP, sinP, fov, cx, cy) {
       if (g <= 0.008) return;
       const alpha = easeOutCubic(Math.min(1, g * 1.15));
       const { gx, gy, radius } = globe;
@@ -4213,43 +4562,86 @@
       ctx.arc(gx, gy, radius, 0, Math.PI * 2);
       ctx.clip();
 
-      // 若小木屋转到树前方，在玻璃内层树前绘制小屋
-      if (cottage.depth < globe.gDepth) {
-        drawMiniSnowCottage(cottage, alpha, timeSec, isPaper);
+      // 1. 树前方的微缩雪景建筑/松树/街灯/雪人
+      drawDioramaSubset(diorama, (p) => p.depth < globe.gDepth, alpha, timeSec, isPaper, cosY, sinY, cosP, sinP, fov, cx, cy);
+
+      // 2. 玻璃球内悬浮的微细金箔亮片（Glitter）
+      if (!isPaper) ctx.globalCompositeOperation = 'lighter';
+      for (const gl of globeGlitter) {
+        const a = gl.ang + timeSec * gl.speed;
+        const gxPos = Math.cos(a) * gl.rad;
+        const gzPos = Math.sin(a) * gl.rad;
+        const gyPos = gl.y + Math.sin(timeSec * 1.4 + gl.bobPhase) * 9;
+        const proj = projectGlobeWorld(gxPos, gyPos, gzPos, cosY, sinY, cosP, sinP, fov, cx, cy);
+        const tw = 0.45 + 0.55 * Math.sin(timeSec * 3.8 + gl.bobPhase);
+        ctx.globalAlpha = alpha * tw * (isPaper ? 0.42 : 0.72);
+        ctx.fillStyle = gl.warm ? '#ffe18f' : '#dff2ff';
+        ctx.beginPath();
+        ctx.arc(proj.sx, proj.sy, Math.max(0.9, gl.size * proj.scale * 0.55), 0, Math.PI * 2);
+        ctx.fill();
       }
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
 
-      // 玻璃球外壳左上角弧形柔光反光月牙
-      ctx.fillStyle = isPaper
-        ? `rgba(255, 255, 255, ${0.32 * alpha})`
-        : `rgba(228, 244, 255, ${0.22 * alpha})`;
+      // 3. 厚玻璃外壳边缘色散折射环（Refraction Rim）
+      const rimGrad = ctx.createRadialGradient(gx, gy, radius * 0.87, gx, gy, radius);
+      if (isPaper) {
+        rimGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+        rimGrad.addColorStop(0.65, `rgba(215, 200, 174, ${0.18 * alpha})`);
+        rimGrad.addColorStop(1, `rgba(128, 108, 84, ${0.34 * alpha})`);
+      } else {
+        rimGrad.addColorStop(0, 'rgba(180, 224, 255, 0)');
+        rimGrad.addColorStop(0.55, `rgba(130, 198, 255, ${0.13 * alpha})`);
+        rimGrad.addColorStop(0.86, `rgba(218, 244, 255, ${0.26 * alpha})`);
+        rimGrad.addColorStop(1, `rgba(255, 226, 175, ${0.24 * alpha})`);
+      }
+      ctx.fillStyle = rimGrad;
+      ctx.fillRect(gx - radius, gy - radius, radius * 2, radius * 2);
+
+      // 4. 球面曲率影棚柔光窗格倒影（上左柔和十字窗格高光）
+      ctx.save();
+      ctx.translate(gx - radius * 0.44, gy - radius * 0.44);
+      ctx.rotate(-0.62);
+      const winRef = ctx.createLinearGradient(-radius * 0.24, 0, radius * 0.24, 0);
+      const refBase = isPaper ? 0.34 : 0.23;
+      winRef.addColorStop(0, `rgba(240, 250, 255, ${refBase * alpha})`);
+      winRef.addColorStop(1, 'rgba(240, 250, 255, 0)');
+      ctx.fillStyle = winRef;
+      const pw = radius * 0.16, ph = radius * 0.24, gap = radius * 0.03;
       ctx.beginPath();
-      ctx.arc(gx - radius * 0.36, gy - radius * 0.36, radius * 0.52, Math.PI * 0.88, Math.PI * 1.62);
-      ctx.quadraticCurveTo(
-        gx - radius * 0.42, gy - radius * 0.56,
-        gx - radius * 0.82, gy - radius * 0.22
-      );
-      ctx.closePath();
+      ctx.roundRect(-pw - gap * 0.5, -ph - gap * 0.5, pw, ph, radius * 0.04);
+      ctx.roundRect(gap * 0.5,       -ph - gap * 0.5, pw * 0.78, ph, radius * 0.04);
+      ctx.roundRect(-pw - gap * 0.5, gap * 0.5,       pw, ph * 0.82, radius * 0.04);
+      ctx.roundRect(gap * 0.5,       gap * 0.5,       pw * 0.78, ph * 0.82, radius * 0.04);
       ctx.fill();
+      ctx.restore();
 
-      // 次级细窄边缘高光（右下角）
+      // 5. 右下角暖金反射轮廓光（承接小屋暖光与黄铜底座反光）
       ctx.strokeStyle = isPaper
-        ? `rgba(255, 252, 244, ${0.42 * alpha})`
-        : `rgba(210, 236, 255, ${0.26 * alpha})`;
-      ctx.lineWidth = Math.max(1.2, radius * 0.015);
+        ? `rgba(242, 210, 152, ${0.42 * alpha})`
+        : `rgba(255, 212, 138, ${0.34 * alpha})`;
+      ctx.lineWidth = Math.max(1.5, radius * 0.016);
       ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.arc(gx, gy, radius * 0.94, Math.PI * 0.08, Math.PI * 0.34);
+      ctx.arc(gx, gy, radius * 0.94, Math.PI * 0.06, Math.PI * 0.32);
       ctx.stroke();
+
+      // 底部玻璃封口微雾霜边
+      const frostGrad = ctx.createLinearGradient(gx, gy + radius * 0.72, gx, gy + radius);
+      frostGrad.addColorStop(0, 'rgba(225, 242, 255, 0)');
+      frostGrad.addColorStop(1, isPaper ? `rgba(255, 252, 244, ${0.36 * alpha})` : `rgba(205, 232, 255, ${0.26 * alpha})`);
+      ctx.fillStyle = frostGrad;
+      ctx.fillRect(gx - radius, gy + radius * 0.72, radius * 2, radius * 0.28);
 
       ctx.restore();
 
-      // 玻璃球外圈晶莹勾边
+      // 玻璃外沿锐利勾光边
       ctx.save();
       ctx.globalCompositeOperation = 'source-over';
       ctx.strokeStyle = isPaper
-        ? `rgba(116, 94, 68, ${0.48 * alpha})`
-        : `rgba(205, 234, 255, ${0.42 * alpha})`;
-      ctx.lineWidth = Math.max(1.4, radius * 0.012);
+        ? `rgba(116, 94, 68, ${0.52 * alpha})`
+        : `rgba(212, 238, 255, ${0.46 * alpha})`;
+      ctx.lineWidth = Math.max(1.4, radius * 0.011);
       ctx.beginPath();
       ctx.arc(gx, gy, radius, 0, Math.PI * 2);
       ctx.stroke();
@@ -4389,7 +4781,7 @@
         if (introComplete) {
           globeProgress += (targetGlobe - globeProgress) * Math.min(1, dt * 6.8);
           if (Math.abs(targetGlobe - globeProgress) < 0.0005) globeProgress = targetGlobe;
-          targetDist = 520 + 575 * globeProgress;
+          targetDist = 520 + 650 * globeProgress;
         }
         camDist += (targetDist - camDist) * Math.min(1, dt * (introComplete ? 9.5 : 3.4));
       }
@@ -4407,7 +4799,7 @@
       const cosP = Math.cos(effPitch), sinP = Math.sin(effPitch);
       const { fov, cx, cy } = getTreeViewportLayout();
       const globe = getSnowGlobeProjection(fov, cx, cy, sinP, cosP);
-      const cottage = getMiniCottageProjection(fov, cx, cy, cosY, sinY, cosP, sinP);
+      const diorama = globeProgress > 0.008 ? buildGlobeDiorama(fov, cx, cy, cosY, sinY, cosP, sinP) : null;
       const snowOpenAlpha = easeOutCubic(Math.min(1, (timeSec - firstSnowTime) / 0.75));
       mouseVx *= Math.pow(0.03, dt);
       mouseVy *= Math.pow(0.03, dt);
@@ -4508,8 +4900,8 @@
         return;
       }
 
-      // 雪球屋背层（底座、球内积雪山丘与树后小木屋）
-      renderSnowGlobeBack(globeProgress, globe, cottage, timeSec, isPaper);
+      // 雪球屋背层（微缩桌面、折射光斑、多层底座、球内雪山与树后立体雪景村落）
+      if (diorama) renderSnowGlobeBack(globeProgress, globe, diorama, effPitch, timeSec, isPaper, cosY, sinY, cosP, sinP, fov, cx, cy);
 
       // 1.5 阶段 A/B 衔接：文字化为粒子钻入地面 + 地面入土光晕涟漪
       if (scenePhase === 'seeding' || groundRipples.length > 0) {
@@ -4862,8 +5254,8 @@
         ctx.drawImage(sp.canvas, drawX - dw * 0.5, drawY - dh * 0.5, dw, dh);
       }
 
-      // 雪球屋前层（前置暖光小木屋 + 晶莹玻璃反光罩）
-      renderSnowGlobeFront(globeProgress, globe, cottage, timeSec, isPaper);
+      // 雪球屋前层（前置雪景村落、悬浮金箔微粒与折射窗格玻璃罩）
+      if (diorama) renderSnowGlobeFront(globeProgress, globe, diorama, timeSec, isPaper, cosY, sinY, cosP, sinP, fov, cx, cy);
 
       // 移轴景深微缩虚化（上下渐进光学虚化带，雪球屋主体保持锐利）
       applyTiltShiftBlur(globeProgress, globe.gy, globe.radius, isPaper);
