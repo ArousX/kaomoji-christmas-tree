@@ -3959,7 +3959,7 @@
         gScale,
         gx: cx,
         gy: cy - (gPy * cosP) * gScale,
-        radius: 276 * gScale
+        radius: 284 * gScale
       };
     }
 
@@ -4305,7 +4305,7 @@
         gScale,
         gx: cx,
         gy: cy - (gPy * cosP) * gScale,
-        radius: 276 * gScale
+        radius: 284 * gScale
       };
     }
 
@@ -4339,15 +4339,132 @@
       }
     }
 
+    function drawSnowGlobePedestal(alpha, gx, gy, radius, effPitch, isPaper) {
+      const baseTopY = gy + radius * 0.86;
+      const baseH = radius * 0.34;
+      const rxTop = radius * 0.58;
+      const rxBot = radius * 0.80;
+      const ellipRatio = Math.max(0.14, Math.min(0.24, 0.15 + Math.sin(effPitch) * 0.11));
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = alpha;
+
+      const woodGrad = ctx.createLinearGradient(gx - rxBot, baseTopY, gx + rxBot, baseTopY);
+      if (isPaper) {
+        woodGrad.addColorStop(0, '#4f3321');
+        woodGrad.addColorStop(0.28, '#8a5d3e');
+        woodGrad.addColorStop(0.52, '#a3714d');
+        woodGrad.addColorStop(0.80, '#6e4930');
+        woodGrad.addColorStop(1, '#442b1b');
+      } else {
+        woodGrad.addColorStop(0, '#120b0c');
+        woodGrad.addColorStop(0.24, '#3d221b');
+        woodGrad.addColorStop(0.48, '#5f372a');
+        woodGrad.addColorStop(0.76, '#311b17');
+        woodGrad.addColorStop(1, '#10090b');
+      }
+
+      // 主木质弧形束腰（盖住玻璃球下端收口与多余地面散点）
+      ctx.fillStyle = woodGrad;
+      ctx.beginPath();
+      ctx.moveTo(gx - rxTop, baseTopY);
+      ctx.lineTo(gx + rxTop, baseTopY);
+      ctx.bezierCurveTo(
+        gx + rxTop * 0.96, baseTopY + baseH * 0.34,
+        gx + rxBot * 0.96, baseTopY + baseH * 0.70,
+        gx + rxBot, baseTopY + baseH * 0.90
+      );
+      ctx.ellipse(gx, baseTopY + baseH * 0.90, rxBot, rxBot * ellipRatio * 0.72, 0, 0, Math.PI, false);
+      ctx.bezierCurveTo(
+        gx - rxBot * 0.96, baseTopY + baseH * 0.70,
+        gx - rxTop * 0.96, baseTopY + baseH * 0.34,
+        gx - rxTop, baseTopY
+      );
+      ctx.closePath();
+      ctx.fill();
+
+      // 底部阶梯式古铜包边底座脚
+      const brassGrad = ctx.createLinearGradient(gx - rxBot, baseTopY, gx + rxBot, baseTopY);
+      brassGrad.addColorStop(0, '#6d4e1e');
+      brassGrad.addColorStop(0.26, '#cfa14b');
+      brassGrad.addColorStop(0.48, '#ffe094');
+      brassGrad.addColorStop(0.75, '#be8c3a');
+      brassGrad.addColorStop(1, '#614418');
+      ctx.fillStyle = brassGrad;
+      ctx.beginPath();
+      ctx.ellipse(gx, baseTopY + baseH * 0.92, rxBot * 1.03, rxBot * ellipRatio * 0.78, 0, 0, Math.PI, false);
+      ctx.lineTo(gx - rxBot * 1.03, baseTopY + baseH * 0.84);
+      ctx.ellipse(gx, baseTopY + baseH * 0.84, rxBot * 1.03, rxBot * ellipRatio * 0.74, 0, Math.PI, 0, true);
+      ctx.closePath();
+      ctx.fill();
+
+      // 上层承托玻璃球底沿的鎏金弧面领环 + 金珠饰边
+      ctx.fillStyle = brassGrad;
+      ctx.beginPath();
+      ctx.ellipse(gx, baseTopY + baseH * 0.04, rxTop * 1.04, rxTop * ellipRatio * 0.74, 0, 0, Math.PI, false);
+      ctx.lineTo(gx - rxTop * 1.02, baseTopY - baseH * 0.03);
+      ctx.ellipse(gx, baseTopY - baseH * 0.03, rxTop * 1.02, rxTop * ellipRatio * 0.68, 0, Math.PI, 0, true);
+      ctx.closePath();
+      ctx.fill();
+
+      const beadCount = 15;
+      const beadR = Math.max(1.2, radius * 0.0135);
+      for (let i = 0; i < beadCount; i++) {
+        const ang = (i / (beadCount - 1)) * Math.PI;
+        const bx = gx - Math.cos(ang) * (rxTop * 0.98);
+        const by = baseTopY + baseH * 0.015 + Math.sin(ang) * (rxTop * ellipRatio * 0.68);
+        ctx.fillStyle = '#ffebb3';
+        ctx.beginPath();
+        ctx.arc(bx, by, beadR, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 底座正面带铆钉的鎏金铭牌（自适应字号严格留在铆钉内侧，零穿模重叠）
+      const plateW = Math.min(rxBot * 1.16, radius * 0.76);
+      const plateH = baseH * 0.32;
+      const plateY = baseTopY + baseH * 0.50;
+      ctx.fillStyle = brassGrad;
+      ctx.beginPath();
+      ctx.roundRect(gx - plateW * 0.5, plateY - plateH * 0.5, plateW, plateH, Math.max(2, plateH * 0.28));
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(72, 46, 16, 0.55)';
+      ctx.lineWidth = Math.max(0.7, radius * 0.004);
+      ctx.stroke();
+
+      if (plateH >= 8) {
+        const rivR = Math.max(1, plateH * 0.085);
+        ctx.fillStyle = '#5c3c12';
+        ctx.beginPath();
+        ctx.arc(gx - plateW * 0.445, plateY, rivR, 0, Math.PI * 2);
+        ctx.arc(gx + plateW * 0.445, plateY, rivR, 0, Math.PI * 2);
+        ctx.fill();
+
+        const label = 'MERRY CHRISTMAS';
+        let fontPx = Math.max(6.5, plateH * 0.46);
+        ctx.font = `600 ${fontPx.toFixed(1)}px "Inter", "PingFang SC", sans-serif`;
+        const measured = ctx.measureText(label).width;
+        const maxLabelW = plateW * 0.74;
+        if (measured > maxLabelW && measured > 0) {
+          fontPx *= maxLabelW / measured;
+          ctx.font = `600 ${fontPx.toFixed(1)}px "Inter", "PingFang SC", sans-serif`;
+        }
+        ctx.fillStyle = '#241608';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, gx, plateY + 0.5);
+      }
+
+      ctx.restore();
+    }
+
     function renderSnowGlobeBack(g, globe, diorama, effPitch, timeSec, isPaper, cosY, sinY, cosP, sinP, fov, cx, cy) {
       if (g <= 0.008) return;
       const alpha = easeOutCubic(Math.min(1, g * 1.15));
       const { gx, gy, radius } = globe;
-      const baseTopY = gy + radius * 0.89;
+      const baseTopY = gy + radius * 0.86;
       const baseH = radius * 0.34;
-      const rxTop = radius * 0.63;
-      const rxBot = radius * 0.83;
-      const ellipRatio = Math.max(0.14, Math.min(0.26, 0.16 + Math.sin(effPitch) * 0.12));
+      const rxBot = radius * 0.80;
 
       ctx.save();
       ctx.globalCompositeOperation = 'source-over';
@@ -4369,7 +4486,7 @@
         ctx.fillRect(0, tableY, viewW, viewH - tableY);
       }
 
-      // 1. 底座阴影 + 穿过水晶球的折射散焦亮斑（Caustics，真实玻璃球的核心光学特征）
+      // 1. 底座阴影 + 穿过水晶球的折射散焦亮斑（Caustics）
       const floorY = baseTopY + baseH * 1.04;
       const shGrad = ctx.createRadialGradient(gx, floorY, radius * 0.15, gx, floorY, rxBot * 1.38);
       shGrad.addColorStop(0, isPaper ? `rgba(56, 44, 30, ${0.32 * alpha})` : `rgba(0, 2, 8, ${0.74 * alpha})`);
@@ -4379,7 +4496,6 @@
       ctx.ellipse(gx, floorY, rxBot * 1.38, baseH * 0.42, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // 折射落焦亮斑（右下方暖金 + 冰蓝微光）
       const causX = gx + rxBot * 0.74;
       const causY = floorY + baseH * 0.08;
       const causGrad = ctx.createRadialGradient(causX, causY, 0, causX, causY, radius * 0.56);
@@ -4414,7 +4530,6 @@
       ctx.fillStyle = innerGrad;
       ctx.fillRect(gx - radius, gy - radius, radius * 2, radius * 2);
 
-      // 远景微缩雪山剪影 + 中景柔光雪丘（营造真微缩景深）
       const farHillY = gy + radius * 0.48;
       ctx.fillStyle = isPaper ? `rgba(218, 208, 190, ${0.55 * alpha})` : `rgba(38, 62, 102, ${0.48 * alpha})`;
       ctx.beginPath();
@@ -4426,7 +4541,6 @@
       ctx.closePath();
       ctx.fill();
 
-      // 主雪丘地台（受底座 2700K 暖灯向上洗亮）
       const snowTopY = gy + radius * 0.56;
       const snowGrad = ctx.createLinearGradient(gx, snowTopY - radius * 0.10, gx, gy + radius);
       if (isPaper) {
@@ -4447,111 +4561,12 @@
       ctx.closePath();
       ctx.fill();
 
-      // 树后方的小木屋 / 小松树 / 街灯 / 雪人
       drawDioramaSubset(diorama, (p) => p.depth >= globe.gDepth, alpha, timeSec, isPaper, cosY, sinY, cosP, sinP, fov, cx, cy);
       ctx.restore();
-
-      // 3. 多层级车削红木 + 鎏金滚珠古典雪球屋底座
-      ctx.globalAlpha = alpha;
-      const woodGrad = ctx.createLinearGradient(gx - rxBot, baseTopY, gx + rxBot, baseTopY);
-      if (isPaper) {
-        woodGrad.addColorStop(0, '#4f3321');
-        woodGrad.addColorStop(0.28, '#8a5d3e');
-        woodGrad.addColorStop(0.52, '#a3714d');
-        woodGrad.addColorStop(0.80, '#6e4930');
-        woodGrad.addColorStop(1, '#442b1b');
-      } else {
-        woodGrad.addColorStop(0, '#120b0c');
-        woodGrad.addColorStop(0.24, '#3d221b');
-        woodGrad.addColorStop(0.48, '#5f372a');
-        woodGrad.addColorStop(0.76, '#311b17');
-        woodGrad.addColorStop(1, '#10090b');
-      }
-
-      // 主木质弧形束腰
-      ctx.fillStyle = woodGrad;
-      ctx.beginPath();
-      ctx.moveTo(gx - rxTop, baseTopY);
-      ctx.lineTo(gx + rxTop, baseTopY);
-      ctx.bezierCurveTo(
-        gx + rxTop * 0.96, baseTopY + baseH * 0.34,
-        gx + rxBot * 0.96, baseTopY + baseH * 0.70,
-        gx + rxBot, baseTopY + baseH * 0.90
-      );
-      ctx.ellipse(gx, baseTopY + baseH * 0.90, rxBot, rxBot * ellipRatio * 0.72, 0, 0, Math.PI, false);
-      ctx.bezierCurveTo(
-        gx - rxBot * 0.96, baseTopY + baseH * 0.70,
-        gx - rxTop * 0.96, baseTopY + baseH * 0.34,
-        gx - rxTop, baseTopY
-      );
-      ctx.closePath();
-      ctx.fill();
-
-      // 底部阶梯式古铜包边底座脚
-      const brassGrad = ctx.createLinearGradient(gx - rxBot, baseTopY, gx + rxBot, baseTopY);
-      brassGrad.addColorStop(0, '#6d4e1e');
-      brassGrad.addColorStop(0.26, '#cfa14b');
-      brassGrad.addColorStop(0.48, '#ffe094');
-      brassGrad.addColorStop(0.75, '#be8c3a');
-      brassGrad.addColorStop(1, '#614418');
-      ctx.fillStyle = brassGrad;
-      ctx.beginPath();
-      ctx.ellipse(gx, baseTopY + baseH * 0.92, rxBot * 1.03, rxBot * ellipRatio * 0.78, 0, 0, Math.PI, false);
-      ctx.lineTo(gx - rxBot * 1.03, baseTopY + baseH * 0.84);
-      ctx.ellipse(gx, baseTopY + baseH * 0.84, rxBot * 1.03, rxBot * ellipRatio * 0.74, 0, Math.PI, 0, true);
-      ctx.closePath();
-      ctx.fill();
-
-      // 上层鎏金托环 + 沿 3D 弧面排列的精致金珠浮雕饰边
-      ctx.fillStyle = brassGrad;
-      ctx.beginPath();
-      ctx.ellipse(gx, baseTopY, rxTop * 1.03, rxTop * ellipRatio * 0.72, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      const beadCount = 15;
-      const beadR = Math.max(1.2, radius * 0.015);
-      for (let i = 0; i < beadCount; i++) {
-        const ang = (i / (beadCount - 1)) * Math.PI;
-        const bx = gx - Math.cos(ang) * (rxTop * 0.99);
-        const by = baseTopY + Math.sin(ang) * (rxTop * ellipRatio * 0.68);
-        ctx.fillStyle = '#ffebb3';
-        ctx.beginPath();
-        ctx.arc(bx, by, beadR, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // 底座正面带铆钉的鎏金铭牌
-      const plateW = radius * 0.58;
-      const plateH = baseH * 0.31;
-      const plateY = baseTopY + baseH * 0.45;
-      ctx.fillStyle = brassGrad;
-      ctx.beginPath();
-      ctx.roundRect(gx - plateW * 0.5, plateY - plateH * 0.5, plateW, plateH, Math.max(2, plateH * 0.28));
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(72, 46, 16, 0.55)';
-      ctx.lineWidth = Math.max(0.7, radius * 0.004);
-      ctx.stroke();
-
-      if (plateH >= 8) {
-        // 左右小铆钉
-        const rivR = Math.max(1, plateH * 0.09);
-        ctx.fillStyle = '#5c3c12';
-        ctx.beginPath();
-        ctx.arc(gx - plateW * 0.44, plateY, rivR, 0, Math.PI * 2);
-        ctx.arc(gx + plateW * 0.44, plateY, rivR, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = '#241608';
-        ctx.font = `600 ${Math.max(7, Math.round(plateH * 0.50))}px "Inter", "PingFang SC", sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('★ MERRY CHRISTMAS ★', gx, plateY + 0.5);
-      }
-
       ctx.restore();
     }
 
-    function renderSnowGlobeFront(g, globe, diorama, timeSec, isPaper, cosY, sinY, cosP, sinP, fov, cx, cy) {
+    function renderSnowGlobeFront(g, globe, diorama, effPitch, timeSec, isPaper, cosY, sinY, cosP, sinP, fov, cx, cy) {
       if (g <= 0.008) return;
       const alpha = easeOutCubic(Math.min(1, g * 1.15));
       const { gx, gy, radius } = globe;
@@ -4616,7 +4631,7 @@
       ctx.fill();
       ctx.restore();
 
-      // 5. 右下角暖金反射轮廓光（承接小屋暖光与黄铜底座反光）
+      // 5. 右下角暖金反射轮廓光
       ctx.strokeStyle = isPaper
         ? `rgba(242, 210, 152, ${0.42 * alpha})`
         : `rgba(255, 212, 138, ${0.34 * alpha})`;
@@ -4627,15 +4642,15 @@
       ctx.stroke();
 
       // 底部玻璃封口微雾霜边
-      const frostGrad = ctx.createLinearGradient(gx, gy + radius * 0.72, gx, gy + radius);
+      const frostGrad = ctx.createLinearGradient(gx, gy + radius * 0.70, gx, gy + radius * 0.90);
       frostGrad.addColorStop(0, 'rgba(225, 242, 255, 0)');
-      frostGrad.addColorStop(1, isPaper ? `rgba(255, 252, 244, ${0.36 * alpha})` : `rgba(205, 232, 255, ${0.26 * alpha})`);
+      frostGrad.addColorStop(1, isPaper ? `rgba(255, 252, 244, ${0.34 * alpha})` : `rgba(205, 232, 255, ${0.24 * alpha})`);
       ctx.fillStyle = frostGrad;
-      ctx.fillRect(gx - radius, gy + radius * 0.72, radius * 2, radius * 0.28);
+      ctx.fillRect(gx - radius, gy + radius * 0.70, radius * 2, radius * 0.20);
 
       ctx.restore();
 
-      // 玻璃外沿锐利勾光边
+      // 玻璃外沿锐利勾光边（仅描到嵌入底座领口的两侧，不穿过底座正面）
       ctx.save();
       ctx.globalCompositeOperation = 'source-over';
       ctx.strokeStyle = isPaper
@@ -4643,9 +4658,12 @@
         : `rgba(212, 238, 255, ${0.46 * alpha})`;
       ctx.lineWidth = Math.max(1.4, radius * 0.011);
       ctx.beginPath();
-      ctx.arc(gx, gy, radius, 0, Math.PI * 2);
+      ctx.arc(gx, gy, radius, Math.PI * 0.67, Math.PI * 2.33);
       ctx.stroke();
       ctx.restore();
+
+      // 6. 最后绘制车削红木鎏金底座，让玻璃球底端物理嵌入底座杯口，彻底杜绝杂点/白边穿模！
+      drawSnowGlobePedestal(alpha, gx, gy, radius, effPitch, isPaper);
     }
 
     function applyTiltShiftBlur(g, focusY, globeR, isPaper) {
@@ -4781,7 +4799,7 @@
         if (introComplete) {
           globeProgress += (targetGlobe - globeProgress) * Math.min(1, dt * 6.8);
           if (Math.abs(targetGlobe - globeProgress) < 0.0005) globeProgress = targetGlobe;
-          targetDist = 520 + 650 * globeProgress;
+          targetDist = 520 + 670 * globeProgress;
         }
         camDist += (targetDist - camDist) * Math.min(1, dt * (introComplete ? 9.5 : 3.4));
       }
@@ -5255,7 +5273,7 @@
       }
 
       // 雪球屋前层（前置雪景村落、悬浮金箔微粒与折射窗格玻璃罩）
-      if (diorama) renderSnowGlobeFront(globeProgress, globe, diorama, timeSec, isPaper, cosY, sinY, cosP, sinP, fov, cx, cy);
+      if (diorama) renderSnowGlobeFront(globeProgress, globe, diorama, effPitch, timeSec, isPaper, cosY, sinY, cosP, sinP, fov, cx, cy);
 
       // 移轴景深微缩虚化（上下渐进光学虚化带，雪球屋主体保持锐利）
       applyTiltShiftBlur(globeProgress, globe.gy, globe.radius, isPaper);
