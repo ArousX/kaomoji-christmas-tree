@@ -1403,7 +1403,7 @@
     </div>
     <div class="hero-kaomoji rb-blur-enter" id="heroRecipientLine" style="--rb-delay:120ms;"><span class="hero-script-sub">to <span id="heroRecipientName">you</span></span> (=^•ω•^=) ♡</div>
     <div class="hero-sub rb-blur-enter" style="--rb-delay:220ms;">
-      点击树身或信封拆开祝福，拖拽可 360° 旋转
+      点击树身或信封拆开祝福
     </div>
 
     <div class="star-border-wrap rb-blur-enter" id="starBorderWrap" style="--rb-delay:300ms;">
@@ -2996,8 +2996,14 @@
     let velPitch = 0.0;
     let camDist = prefersReducedMotion ? 520 : 680;
     let targetDist = 520;
+    let targetGlobe = 0.0;   // 0 = 近景全屏树, 1 = 移轴微缩雪球屋
+    let globeProgress = 0.0;
     let panX = 104;
     let panY = 18;
+
+    function getEffectivePitch() {
+      return Math.max(-0.55, Math.min(1.15, pitch + globeProgress * 0.34));
+    }
 
     let autoRotate = true;
     let autoSpeed = 0.35;
@@ -3068,18 +3074,25 @@
       const w = viewW || window.innerWidth || 1280;
       const h = viewH || window.innerHeight || 720;
       const isMobile = w <= 768;
+      const ge = globeProgress;
+      const fovScale = 1 + (isMobile ? 0.14 : 0.16) * ge;
       return {
         isMobile,
-        fov: isMobile ? Math.min(w * 1.14, h * 0.60) : Math.min(w, h) * 0.98,
-        cx: isMobile ? (w * 0.49 + (panX - 104) * 0.6) : (w * 0.52 + panX),
-        cy: isMobile ? (h * 0.62) : (h * 0.49)
+        fov: (isMobile ? Math.min(w * 1.14, h * 0.60) : Math.min(w, h) * 0.98) * fovScale,
+        cx: isMobile
+          ? (w * 0.49 + (panX - 104) * 0.6)
+          : (w * 0.52 + panX * (1 - 0.34 * ge)),
+        cy: isMobile
+          ? (h * (0.62 - 0.055 * ge))
+          : (h * (0.49 - 0.048 * ge))
       };
     }
 
     function getTreeGroundScreenPos() {
       const { fov, cx, cy } = getTreeViewportLayout();
+      const effPitch = getEffectivePitch();
       const py = -132 - panY;
-      const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
+      const cosP = Math.cos(effPitch), sinP = Math.sin(effPitch);
       const depth = py * sinP + camDist;
       const scale = fov / Math.max(40, depth);
       return {
@@ -3815,12 +3828,27 @@
 
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
-    canvas.addEventListener('wheel', (e) => {
+    window.addEventListener('wheel', (e) => {
+      if (cardModalBackdrop.classList.contains('open') || composeModalBackdrop.classList.contains('open')) return;
       e.preventDefault();
-      targetDist = Math.max(230, Math.min(920, targetDist + e.deltaY * 0.32));
+      if (scenePhase !== 'ready') return;
+      targetGlobe = Math.max(0, Math.min(1, targetGlobe + e.deltaY * 0.00135));
     }, { passive: false });
 
+    let pinchStartDist = 0;
+    let pinchStartGlobe = 0;
+
     canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2 && scenePhase === 'ready') {
+        pointerDownLeft = false;
+        draggingLeft = false;
+        pinchStartDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        pinchStartGlobe = targetGlobe;
+        return;
+      }
       if (e.touches.length === 1) {
         const t = e.touches[0];
         lastMoveX = mouseX = t.clientX;
@@ -3835,7 +3863,8 @@
       }
     }, { passive: true });
 
-    window.addEventListener('touchend', () => {
+    window.addEventListener('touchend', (e) => {
+      if (e.touches.length < 2) pinchStartDist = 0;
       mouseActive = false;
       if (pointerDownLeft && !draggingLeft) {
         handleCanvasClick(pointerDownX, pointerDownY);
@@ -3844,6 +3873,15 @@
       draggingLeft = false;
     });
     window.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2 && scenePhase === 'ready' && pinchStartDist > 10) {
+        const curDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        const ratioDelta = (pinchStartDist - curDist) / 180;
+        targetGlobe = Math.max(0, Math.min(1, pinchStartGlobe + ratioDelta));
+        return;
+      }
       if (e.touches.length !== 1) return;
       const t = e.touches[0];
       const tx = t.clientX;
@@ -3905,6 +3943,380 @@
     let prevTime = performance.now();
 
     let firstSnowTime = 0;
+
+    // 移轴景深离屏双级降采样缓冲（零额外依赖、全端 60fps 光学虚化）
+    const tiltTinyCanvas = document.createElement('canvas');
+    const tiltTinyCtx = tiltTinyCanvas.getContext('2d');
+    const tiltBlurCanvas = document.createElement('canvas');
+    const tiltBlurCtx = tiltBlurCanvas.getContext('2d');
+
+    function getSnowGlobeProjection(fov, cx, cy, sinP, cosP) {
+      const gPy = 12 - panY;
+      const gDepth = Math.max(40, gPy * sinP + camDist);
+      const gScale = fov / gDepth;
+      return {
+        gDepth,
+        gScale,
+        gx: cx,
+        gy: cy - (gPy * cosP) * gScale,
+        radius: 276 * gScale
+      };
+    }
+
+    function getMiniCottageProjection(fov, cx, cy, cosY, sinY, cosP, sinP) {
+      const hx = -146, hy = -126, hz = -48;
+      const hpy = hy - panY;
+      const rx = hx * cosY - hz * sinY;
+      const rz1 = hx * sinY + hz * cosY;
+      const depth = hpy * sinP + rz1 * cosP + camDist;
+      const scale = fov / Math.max(40, depth);
+      return {
+        depth,
+        scale,
+        sx: cx + rx * scale,
+        sy: cy - (hpy * cosP - rz1 * sinP) * scale
+      };
+    }
+
+    function drawMiniSnowCottage(cottage, alpha, timeSec, isPaper) {
+      if (alpha <= 0.01 || cottage.depth <= 30) return;
+      const u = cottage.scale * 1.18;
+      if (u < 0.08) return;
+      const w = 32 * u;
+      const h = 21 * u;
+      const roofH = 16 * u;
+      const sx = cottage.sx;
+      const sy = cottage.sy;
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = alpha;
+      ctx.translate(sx, sy);
+
+      // 小屋脚下积雪基座
+      ctx.fillStyle = isPaper ? 'rgba(255, 252, 245, 0.92)' : 'rgba(222, 238, 255, 0.85)';
+      ctx.beginPath();
+      ctx.ellipse(0, h * 0.45, w * 0.78, h * 0.28, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 小屋主体墙身
+      ctx.fillStyle = isPaper ? '#7c5539' : '#3a2723';
+      ctx.beginPath();
+      ctx.roundRect(-w * 0.46, -h * 0.48, w * 0.92, h * 0.92, 2.5 * u);
+      ctx.fill();
+
+      // 山墙三角面
+      ctx.fillStyle = isPaper ? '#8d6243' : '#4a322c';
+      ctx.beginPath();
+      ctx.moveTo(-w * 0.46, -h * 0.46);
+      ctx.lineTo(0, -h * 0.46 - roofH * 0.78);
+      ctx.lineTo(w * 0.46, -h * 0.46);
+      ctx.closePath();
+      ctx.fill();
+
+      // 屋顶烟囱与缓缓飘起的暖烟
+      const chX = w * 0.22;
+      const chY = -h * 0.46 - roofH * 0.62;
+      ctx.fillStyle = isPaper ? '#8c3b32' : '#6e342f';
+      ctx.fillRect(chX, chY, 5.2 * u, 9 * u);
+      for (let k = 0; k < 3; k++) {
+        const phase = ((timeSec * 0.45 + k * 0.33) % 1);
+        const smX = chX + 2.6 * u + Math.sin(timeSec * 1.8 + k * 2.1) * 3.5 * u + phase * 5 * u;
+        const smY = chY - phase * 18 * u;
+        const smR = (2.2 + phase * 3.4) * u;
+        ctx.fillStyle = isPaper
+          ? `rgba(120, 108, 96, ${(1 - phase) * 0.32})`
+          : `rgba(226, 238, 255, ${(1 - phase) * 0.38})`;
+        ctx.beginPath();
+        ctx.arc(smX, smY, smR, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 厚实蓬松的雪顶斜屋檐
+      ctx.fillStyle = isPaper ? '#fffdf8' : '#edf6ff';
+      ctx.beginPath();
+      ctx.moveTo(-w * 0.62, -h * 0.36);
+      ctx.quadraticCurveTo(-w * 0.28, -h * 0.50 - roofH * 0.56, 0, -h * 0.50 - roofH * 0.94);
+      ctx.quadraticCurveTo(w * 0.28, -h * 0.50 - roofH * 0.56, w * 0.62, -h * 0.36);
+      ctx.quadraticCurveTo(w * 0.45, -h * 0.22, w * 0.32, -h * 0.34);
+      ctx.lineTo(0, -h * 0.48 - roofH * 0.68);
+      ctx.lineTo(-w * 0.32, -h * 0.34);
+      ctx.quadraticCurveTo(-w * 0.45, -h * 0.22, -w * 0.62, -h * 0.36);
+      ctx.closePath();
+      ctx.fill();
+
+      // 暖光木门与两扇亮着暖灯的小窗户
+      const winGlow = isPaper ? 'rgba(232, 168, 56, 0.35)' : 'rgba(255, 208, 106, 0.45)';
+      const winGrad = ctx.createRadialGradient(-w * 0.19, -h * 0.05, 0, -w * 0.19, -h * 0.05, w * 0.42);
+      winGrad.addColorStop(0, winGlow);
+      winGrad.addColorStop(1, 'rgba(255, 208, 106, 0)');
+      ctx.fillStyle = winGrad;
+      ctx.beginPath();
+      ctx.arc(-w * 0.19, -h * 0.05, w * 0.42, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffe082';
+      ctx.fillRect(-w * 0.28, -h * 0.16, 6.2 * u, 6.2 * u);
+      ctx.fillRect(w * 0.12, -h * 0.16, 6.2 * u, 6.2 * u);
+      ctx.fillStyle = '#ffbe55';
+      ctx.beginPath();
+      ctx.roundRect(-w * 0.07, -h * 0.10, 6.5 * u, h * 0.52, [3 * u, 3 * u, 0, 0]);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function renderSnowGlobeBack(g, globe, cottage, timeSec, isPaper) {
+      if (g <= 0.008) return;
+      const alpha = easeOutCubic(Math.min(1, g * 1.15));
+      const { gx, gy, radius } = globe;
+      const baseTopY = gy + radius * 0.89;
+      const baseH = radius * 0.30;
+      const rxTop = radius * 0.62;
+      const rxBot = radius * 0.80;
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+
+      // 1. 微缩桌面底部柔和投影（增强移轴桌面模型立体感）
+      const shGrad = ctx.createRadialGradient(
+        gx, baseTopY + baseH * 1.06, radius * 0.12,
+        gx, baseTopY + baseH * 1.06, rxBot * 1.28
+      );
+      shGrad.addColorStop(0, isPaper ? `rgba(60, 48, 34, ${0.26 * alpha})` : `rgba(0, 2, 8, ${0.65 * alpha})`);
+      shGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = shGrad;
+      ctx.beginPath();
+      ctx.ellipse(gx, baseTopY + baseH * 1.06, rxBot * 1.28, baseH * 0.44, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 2. 玻璃球体内腔透亮底色与底部积雪地形（裁剪在球内）
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(gx, gy, radius, 0, Math.PI * 2);
+      ctx.clip();
+
+      const innerGrad = ctx.createRadialGradient(
+        gx - radius * 0.25, gy - radius * 0.25, radius * 0.1,
+        gx, gy, radius
+      );
+      if (isPaper) {
+        innerGrad.addColorStop(0, `rgba(255, 253, 248, ${0.14 * alpha})`);
+        innerGrad.addColorStop(0.75, `rgba(240, 232, 214, ${0.22 * alpha})`);
+        innerGrad.addColorStop(1, `rgba(182, 162, 132, ${0.34 * alpha})`);
+      } else {
+        innerGrad.addColorStop(0, `rgba(160, 208, 255, ${0.04 * alpha})`);
+        innerGrad.addColorStop(0.76, `rgba(110, 175, 245, ${0.10 * alpha})`);
+        innerGrad.addColorStop(1, `rgba(185, 224, 255, ${0.22 * alpha})`);
+      }
+      ctx.fillStyle = innerGrad;
+      ctx.fillRect(gx - radius, gy - radius, radius * 2, radius * 2);
+
+      // 球内底层积雪山丘
+      const snowTopY = gy + radius * 0.56;
+      const snowGrad = ctx.createLinearGradient(gx, snowTopY - radius * 0.08, gx, gy + radius);
+      if (isPaper) {
+        snowGrad.addColorStop(0, `rgba(255, 252, 244, ${0.90 * alpha})`);
+        snowGrad.addColorStop(1, `rgba(229, 219, 200, ${0.96 * alpha})`);
+      } else {
+        snowGrad.addColorStop(0, `rgba(218, 236, 255, ${0.34 * alpha})`);
+        snowGrad.addColorStop(0.45, `rgba(148, 184, 224, ${0.40 * alpha})`);
+        snowGrad.addColorStop(1, `rgba(24, 38, 66, ${0.88 * alpha})`);
+      }
+      ctx.fillStyle = snowGrad;
+      ctx.beginPath();
+      ctx.moveTo(gx - radius, snowTopY + radius * 0.05);
+      ctx.quadraticCurveTo(gx - radius * 0.34, snowTopY - radius * 0.12, gx, snowTopY + radius * 0.02);
+      ctx.quadraticCurveTo(gx + radius * 0.38, snowTopY + radius * 0.12, gx + radius, snowTopY - radius * 0.02);
+      ctx.lineTo(gx + radius, gy + radius);
+      ctx.lineTo(gx - radius, gy + radius);
+      ctx.closePath();
+      ctx.fill();
+
+      // 若小木屋此时转到了圣诞树后方，则在树后渲染小屋
+      if (cottage.depth >= globe.gDepth) {
+        drawMiniSnowCottage(cottage, alpha, timeSec, isPaper);
+      }
+      ctx.restore();
+
+      // 3. 胡桃木鎏金雪球屋底座
+      ctx.globalAlpha = alpha;
+      const woodGrad = ctx.createLinearGradient(gx - rxBot, baseTopY, gx + rxBot, baseTopY);
+      if (isPaper) {
+        woodGrad.addColorStop(0, '#5a3d28');
+        woodGrad.addColorStop(0.32, '#8b6343');
+        woodGrad.addColorStop(0.68, '#734f34');
+        woodGrad.addColorStop(1, '#4a311f');
+      } else {
+        woodGrad.addColorStop(0, '#140e10');
+        woodGrad.addColorStop(0.28, '#3b241d');
+        woodGrad.addColorStop(0.55, '#54352a');
+        woodGrad.addColorStop(0.82, '#2b1b18');
+        woodGrad.addColorStop(1, '#120c0e');
+      }
+      ctx.fillStyle = woodGrad;
+      ctx.beginPath();
+      ctx.moveTo(gx - rxTop, baseTopY);
+      ctx.lineTo(gx + rxTop, baseTopY);
+      ctx.bezierCurveTo(
+        gx + rxTop * 1.06, baseTopY + baseH * 0.45,
+        gx + rxBot * 0.98, baseTopY + baseH * 0.72,
+        gx + rxBot, baseTopY + baseH
+      );
+      ctx.ellipse(gx, baseTopY + baseH, rxBot, baseH * 0.22, 0, 0, Math.PI, false);
+      ctx.bezierCurveTo(
+        gx - rxBot * 0.98, baseTopY + baseH * 0.72,
+        gx - rxTop * 1.06, baseTopY + baseH * 0.45,
+        gx - rxTop, baseTopY
+      );
+      ctx.closePath();
+      ctx.fill();
+
+      // 底座顶部鎏金嵌环
+      const brassGrad = ctx.createLinearGradient(gx - rxTop, baseTopY, gx + rxTop, baseTopY);
+      brassGrad.addColorStop(0, '#8a662b');
+      brassGrad.addColorStop(0.35, '#f2cf83');
+      brassGrad.addColorStop(0.65, '#cfa04c');
+      brassGrad.addColorStop(1, '#7a5923');
+      ctx.fillStyle = brassGrad;
+      ctx.beginPath();
+      ctx.ellipse(gx, baseTopY, rxTop * 1.02, baseH * 0.17, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 底座正面鎏金铭牌（随球体大小流畅缩放）
+      const plateW = radius * 0.56;
+      const plateH = baseH * 0.34;
+      const plateY = baseTopY + baseH * 0.44;
+      ctx.fillStyle = brassGrad;
+      ctx.beginPath();
+      ctx.roundRect(gx - plateW * 0.5, plateY - plateH * 0.5, plateW, plateH, Math.max(2, plateH * 0.28));
+      ctx.fill();
+      if (plateH >= 9) {
+        ctx.fillStyle = '#26180a';
+        ctx.font = `600 ${Math.max(7, Math.round(plateH * 0.52))}px "Inter", "PingFang SC", sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('★ MERRY CHRISTMAS ★', gx, plateY + 0.5);
+      }
+
+      ctx.restore();
+    }
+
+    function renderSnowGlobeFront(g, globe, cottage, timeSec, isPaper) {
+      if (g <= 0.008) return;
+      const alpha = easeOutCubic(Math.min(1, g * 1.15));
+      const { gx, gy, radius } = globe;
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.beginPath();
+      ctx.arc(gx, gy, radius, 0, Math.PI * 2);
+      ctx.clip();
+
+      // 若小木屋转到树前方，在玻璃内层树前绘制小屋
+      if (cottage.depth < globe.gDepth) {
+        drawMiniSnowCottage(cottage, alpha, timeSec, isPaper);
+      }
+
+      // 玻璃球外壳左上角弧形柔光反光月牙
+      ctx.fillStyle = isPaper
+        ? `rgba(255, 255, 255, ${0.32 * alpha})`
+        : `rgba(228, 244, 255, ${0.22 * alpha})`;
+      ctx.beginPath();
+      ctx.arc(gx - radius * 0.36, gy - radius * 0.36, radius * 0.52, Math.PI * 0.88, Math.PI * 1.62);
+      ctx.quadraticCurveTo(
+        gx - radius * 0.42, gy - radius * 0.56,
+        gx - radius * 0.82, gy - radius * 0.22
+      );
+      ctx.closePath();
+      ctx.fill();
+
+      // 次级细窄边缘高光（右下角）
+      ctx.strokeStyle = isPaper
+        ? `rgba(255, 252, 244, ${0.42 * alpha})`
+        : `rgba(210, 236, 255, ${0.26 * alpha})`;
+      ctx.lineWidth = Math.max(1.2, radius * 0.015);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(gx, gy, radius * 0.94, Math.PI * 0.08, Math.PI * 0.34);
+      ctx.stroke();
+
+      ctx.restore();
+
+      // 玻璃球外圈晶莹勾边
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = isPaper
+        ? `rgba(116, 94, 68, ${0.48 * alpha})`
+        : `rgba(205, 234, 255, ${0.42 * alpha})`;
+      ctx.lineWidth = Math.max(1.4, radius * 0.012);
+      ctx.beginPath();
+      ctx.arc(gx, gy, radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function applyTiltShiftBlur(g, focusY, globeR, isPaper) {
+      if (g <= 0.015 || !viewW || !viewH) return;
+      const tw = Math.max(80, Math.floor(viewW * 0.14));
+      const th = Math.max(60, Math.floor(viewH * 0.14));
+      const bw = Math.max(160, Math.floor(viewW * 0.30));
+      const bh = Math.max(120, Math.floor(viewH * 0.30));
+
+      if (tiltTinyCanvas.width !== tw || tiltTinyCanvas.height !== th) {
+        tiltTinyCanvas.width = tw;
+        tiltTinyCanvas.height = th;
+      }
+      if (tiltBlurCanvas.width !== bw || tiltBlurCanvas.height !== bh) {
+        tiltBlurCanvas.width = bw;
+        tiltBlurCanvas.height = bh;
+      }
+
+      // 两级双线性降采样生成顺滑光学焦外散景
+      tiltTinyCtx.clearRect(0, 0, tw, th);
+      tiltTinyCtx.imageSmoothingEnabled = true;
+      tiltTinyCtx.imageSmoothingQuality = 'high';
+      tiltTinyCtx.drawImage(canvas, 0, 0, tw, th);
+
+      tiltBlurCtx.save();
+      tiltBlurCtx.globalCompositeOperation = 'source-over';
+      tiltBlurCtx.clearRect(0, 0, bw, bh);
+      tiltBlurCtx.imageSmoothingEnabled = true;
+      tiltBlurCtx.imageSmoothingQuality = 'high';
+      tiltBlurCtx.drawImage(tiltTinyCanvas, 0, 0, bw, bh);
+
+      // 只保留上下焦外带，雪球屋与圣诞树主体处于清晰焦平面内
+      tiltBlurCtx.globalCompositeOperation = 'destination-in';
+      const focusTop = Math.max(0.05, Math.min(0.68, (focusY - globeR * 0.62) / viewH));
+      const focusBot = Math.min(0.96, Math.max(focusTop + 0.16, (focusY + globeR * 0.78) / viewH));
+      const maskGrad = tiltBlurCtx.createLinearGradient(0, 0, 0, bh);
+      const blurStrength = Math.min(0.95, g * 0.94);
+      maskGrad.addColorStop(0, `rgba(0, 0, 0, ${blurStrength})`);
+      maskGrad.addColorStop(focusTop, 'rgba(0, 0, 0, 0)');
+      maskGrad.addColorStop(focusBot, 'rgba(0, 0, 0, 0)');
+      maskGrad.addColorStop(1, `rgba(0, 0, 0, ${blurStrength})`);
+      tiltBlurCtx.fillStyle = maskGrad;
+      tiltBlurCtx.fillRect(0, 0, bw, bh);
+      tiltBlurCtx.restore();
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+      ctx.drawImage(tiltBlurCanvas, 0, 0, viewW, viewH);
+
+      // 移轴上下暗角景深压暗，突出雪球屋微缩质感
+      const vigGrad = ctx.createLinearGradient(0, 0, 0, viewH);
+      const edgeTint = isPaper
+        ? `rgba(208, 196, 174, ${0.30 * g})`
+        : `rgba(3, 5, 12, ${0.42 * g})`;
+      vigGrad.addColorStop(0, edgeTint);
+      vigGrad.addColorStop(focusTop, 'rgba(0, 0, 0, 0)');
+      vigGrad.addColorStop(focusBot, 'rgba(0, 0, 0, 0)');
+      vigGrad.addColorStop(1, edgeTint);
+      ctx.fillStyle = vigGrad;
+      ctx.fillRect(0, 0, viewW, viewH);
+      ctx.restore();
+    }
 
     function renderBurstEffects(dt, timeSec) {
       if (!burstEffects.length) return;
@@ -3974,6 +4386,11 @@
           yaw += velYaw * dt;
           pitch = Math.max(-0.55, Math.min(1.15, pitch + velPitch * dt));
         }
+        if (introComplete) {
+          globeProgress += (targetGlobe - globeProgress) * Math.min(1, dt * 6.8);
+          if (Math.abs(targetGlobe - globeProgress) < 0.0005) globeProgress = targetGlobe;
+          targetDist = 520 + 575 * globeProgress;
+        }
         camDist += (targetDist - camDist) * Math.min(1, dt * (introComplete ? 9.5 : 3.4));
       }
 
@@ -3985,9 +4402,12 @@
       ctx.globalAlpha = 1;
       ctx.drawImage(bgCanvas, 0, 0, viewW, viewH);
 
+      const effPitch = getEffectivePitch();
       const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
-      const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
+      const cosP = Math.cos(effPitch), sinP = Math.sin(effPitch);
       const { fov, cx, cy } = getTreeViewportLayout();
+      const globe = getSnowGlobeProjection(fov, cx, cy, sinP, cosP);
+      const cottage = getMiniCottageProjection(fov, cx, cy, cosY, sinY, cosP, sinP);
       const snowOpenAlpha = easeOutCubic(Math.min(1, (timeSec - firstSnowTime) / 0.75));
       mouseVx *= Math.pow(0.03, dt);
       mouseVy *= Math.pow(0.03, dt);
@@ -4063,7 +4483,11 @@
         const drawSnowY = sy + s.pushY;
         const energyBoost = pushMag > 2 ? (1 + Math.min(0.28, pushMag * 0.0035)) : 1;
         const twinkle = 0.72 + 0.28 * Math.sin(timeSec * 3.2 + s.phase);
-        ctx.globalAlpha = Math.min(1, Math.max(0.18, Math.min(1.0, (460 / depth) * s.alphaBase * twinkle)) * (isPaper ? 0.68 : 0.96) * snowOpenAlpha * energyBoost);
+        const insideGlobe = globeProgress > 0.02
+          ? (Math.hypot(drawSnowX - globe.gx, drawSnowY - globe.gy) <= globe.radius * 0.96)
+          : true;
+        const globeSnowFade = insideGlobe ? 1 : (1 - 0.72 * globeProgress);
+        ctx.globalAlpha = Math.min(1, Math.max(0.18, Math.min(1.0, (460 / depth) * s.alphaBase * twinkle)) * (isPaper ? 0.68 : 0.96) * snowOpenAlpha * energyBoost * globeSnowFade);
 
         if (s.isFlake) {
           const ratio = (s.size * scale * 0.62) / s.sprite.baseFontPx;
@@ -4083,6 +4507,9 @@
         requestAnimationFrame(animate);
         return;
       }
+
+      // 雪球屋背层（底座、球内积雪山丘与树后小木屋）
+      renderSnowGlobeBack(globeProgress, globe, cottage, timeSec, isPaper);
 
       // 1.5 阶段 A/B 衔接：文字化为粒子钻入地面 + 地面入土光晕涟漪
       if (scenePhase === 'seeding' || groundRipples.length > 0) {
@@ -4434,6 +4861,12 @@
 
         ctx.drawImage(sp.canvas, drawX - dw * 0.5, drawY - dh * 0.5, dw, dh);
       }
+
+      // 雪球屋前层（前置暖光小木屋 + 晶莹玻璃反光罩）
+      renderSnowGlobeFront(globeProgress, globe, cottage, timeSec, isPaper);
+
+      // 移轴景深微缩虚化（上下渐进光学虚化带，雪球屋主体保持锐利）
+      applyTiltShiftBlur(globeProgress, globe.gy, globe.radius, isPaper);
 
       // 5. 渲染点击粒子特效
       renderBurstEffects(dt, timeSec);
