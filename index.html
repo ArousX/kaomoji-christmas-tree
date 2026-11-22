@@ -2415,14 +2415,15 @@
         }
       });
 
-      // 3. 树干文字：Merry / Christmas / to you
+      // 3. 树干文字：Merry / Christmas / to [填写名字]
       [
-        { text: 'Merry',     y: bottomY - 26, size: 19 },
-        { text: 'Christmas', y: bottomY - 52, size: 21 },
-        { text: 'to you',    y: bottomY - 78, size: 17 }
+        { text: 'Merry',     y: bottomY - 26, size: 19, trunkRole: 'merry' },
+        { text: 'Christmas', y: bottomY - 52, size: 21, trunkRole: 'xmas' },
+        { text: 'to you',    y: bottomY - 78, size: 17, trunkRole: 'recipient' }
       ].forEach((ln, idx) => {
         treeNodes.push({
           type: 'trunkText',
+          trunkRole: ln.trunkRole,
           x: 0, y: ln.y, z: 0,
           text: ln.text, altText: ln.text,
           fontSize: ln.size, colorIdx: idx, phase: idx * 0.8,
@@ -3211,6 +3212,22 @@
       }
     }
 
+    function updateTreeTrunkRecipient(name) {
+      const targetText = name ? `to ${name}` : 'to you';
+      const lenUnits = Array.from(targetText).reduce((acc, ch) => acc + (/[\x00-\xff]/.test(ch) ? 0.55 : 1), 0);
+      const fitSize = Math.max(12, Math.min(17, Math.round(17 * 5.2 / Math.max(5.2, lenUnits))));
+      let changed = false;
+      for (const n of treeNodes) {
+        if (n.type === 'trunkText' && n.trunkRole === 'recipient') {
+          n.text = targetText;
+          n.altText = targetText;
+          n.fontSize = fitSize;
+          changed = true;
+        }
+      }
+      if (changed) bindSpritesForTheme();
+    }
+
     function startPlantingSequence() {
       if (typeof window.__unlockBgm === 'function') window.__unlockBgm();
       if (scenePhase !== 'prompt') return;
@@ -3224,6 +3241,7 @@
       if (heroRecipientNameEl) {
         heroRecipientNameEl.textContent = recipient || 'you';
       }
+      updateTreeTrunkRecipient(recipient);
 
       if (prefersReducedMotion) {
         if (plantPromptEl) plantPromptEl.remove();
